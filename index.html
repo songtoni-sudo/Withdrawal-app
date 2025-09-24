@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Uttagsdashboard v1.8.4b — Guardrails + FR + HICP + Historik</title>
+  <link rel="stylesheet" href="styles.css?v=1.8.4b" />
+</head>
+<body>
+  <div id="bg-azure" class="bg-azure" aria-hidden="true"></div>
+  <div id="bg-overlay" class="bg-overlay" aria-hidden="true"></div>
+
+  <header class="appbar glass">
+    <div class="wrap row between">
+      <div class="row g12">
+        <div class="brand-dot"></div>
+        <div>
+          <div class="brand">Uttagsdashboard</div>
+          <div class="sub muted">Index‑All‑In · Guardrails · EUR · <span class="badge">v1.8.4b</span></div>
+        </div>
+      </div>
+      <div class="row g8">
+        <button id="btn-save" class="btn ghost">Spara</button>
+        <button id="btn-export" class="btn ghost">Export (.json)</button>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">Import
+          <input id="file-import" type="file" accept="application/json" hidden /></label>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap content">
+    <div id="err" class="err" hidden></div>
+
+    <section class="grid g16">
+      <div class="card kpi glass" style="grid-column: span 4;">
+        <div class="title">Månadens total</div>
+        <div class="value" id="kpi-total">–</div>
+        <div class="hint">= Realt uttag × HICP‑faktor</div>
+      </div>
+      <div class="card kpi glass" style="grid-column: span 4;">
+        <div class="title">ISK‑uttag (nom)</div>
+        <div class="value" id="kpi-isk">–</div>
+        <div class="hint">Fas‑styrt · Stötdämpare</div>
+      </div>
+      <div class="card kpi glass" style="grid-column: span 4;">
+        <div class="title">Status</div>
+        <div class="row g10">
+          <span id="badge" class="pill">–</span>
+          <span id="badge-txt" class="muted small">Ingen signal</span>
+        </div>
+        <div id="drawdown-line" class="tiny muted mt8"></div>
+      </div>
+    </section>
+
+    <section class="grid g16">
+      <div class="card glass" style="grid-column: span 7;">
+        <div class="title-row">
+          <div class="title">Regler & beslut</div>
+          <span class="chip" id="kpi-phase">Fas –</span>
+        </div>
+        <div class="rows">
+          <div class="row between"><div class="muted">Aktuell real nivå</div><div class="mono strong" id="kpi-real-current">–</div></div>
+          <div class="row between"><div class="muted">Föreslagen real nivå</div><div class="mono strong" id="kpi-real-proposed">–</div></div>
+          <div class="row between"><div class="muted">HICP‑faktor (I)</div><div class="mono" id="kpi-hicp">–</div></div>
+          <div class="row between"><div class="muted">Drawdown mot topp</div><div class="mono" id="kpi-dd">–</div></div>
+          <div class="row between"><div class="muted">Finansieringsgrad FR</div><div class="mono" id="kpi-fr">–</div></div>
+        </div>
+        <div class="hr"></div>
+        <div class="row g8">
+          <button id="btn-commit" class="btn">Verkställ ny nivå</button>
+          <button id="btn-sync" class="btn ghost">Synka ”Aktuell = Normal”</button>
+          <span class="hint" id="commit-hint">Cadens: Kvartal (90 d) · Du kan ändra nu.</span>
+        </div>
+      </div>
+
+      <div class="card glass" style="grid-column: span 5;">
+        <div class="title">Drawdown‑räcken</div>
+        <table class="tbl">
+          <thead><tr><th>DD‑intervall</th><th>Multiplikator</th><th>Real nivå</th></tr></thead>
+          <tbody id="tbl-rails"></tbody>
+        </table>
+        <div class="row g8 mt8">
+          <button id="btn-reset-rails" class="btn ghost tiny">Återställ trappa</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid g16">
+      <div class="card glass" style="grid-column: span 7;">
+        <div class="title">Inställningar (EUR)</div>
+        <div class="form">
+          <label>Normalnivå (realt)
+            <div class="field"><input id="inp-normal" type="text" inputmode="decimal" data-type="currency" placeholder="7 000" /><span class="suffix">€</span></div>
+          </label>
+
+          <label>HICP‑bas (indexnivå)</label>
+          <div class="row g8">
+            <input id="inp-hicp-base" type="text" inputmode="decimal" placeholder="126,88" style="flex:1" />
+            <button id="btn-base-inline" class="btn ghost">← Sätt till “Senast”</button>
+          </div>
+
+          <div class="two">
+            <label>TJP netto (€/mån) <div class="field"><input id="inp-tjp" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
+            <label>PPM netto (€/mån) <div class="field"><input id="inp-ppm" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
+          </div>
+          <div class="two">
+            <label>INK netto (€/mån) <div class="field"><input id="inp-ink" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
+            <label>Födelsedatum (YYYY‑MM‑DD)<input id="inp-birth" type="text" placeholder="1976-01-01" /></label>
+          </div>
+
+          <div class="two">
+            <label>ISK (nominellt €) <div class="field"><input id="inp-isk" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
+            <label>Portfölj högsta (€) <div class="field"><input id="inp-peak" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
+          </div>
+
+          <div class="two">
+            <label>Ändringsfrekvens<select id="sel-cadence"><option value="q">Kvartal (90 d)</option><option value="m">Månadsvis (30 d)</option></select></label>
+            <label>Auto‑ATH<select id="sel-auto-peak"><option value="on">På</option><option value="off">Av</option></select></label>
+          </div>
+
+          <div class="two">
+            <label>Auto‑verkställ ”Normal”
+              <select id="sel-auto-sync"><option value="off">Av</option><option value="on">På</option></select>
+            </label>
+            <label>—</label>
+          </div>
+
+          <div class="two">
+            <label>Remote Config URL (JSON)<input id="inp-remote-url" type="url" placeholder="https://..." /></label>
+            <label>Ladda Remote vid start<select id="sel-remote-first"><option value="off">Av</option><option value="on">På</option></select></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card glass" style="grid-column: span 5;">
+        <div class="title">HICP Spanien – senast</div>
+        <div class="row between">
+          <div class="value small" id="hicp-latest">–</div>
+          <span class="chip ghost" id="hicp-date">–</span>
+        </div>
+        <div class="two mt8">
+          <label>Manuell HICP (fallback)<input id="inp-hicp-manual" type="text" inputmode="decimal" placeholder="126,88" /></label>
+          <label>—</label>
+        </div>
+        <div class="hint mt8">Proxy: ECB SDMX. Vid fel – skriv nivå i “Manuell HICP” eller sätt bas manuellt.</div>
+      </div>
+    </section>
+
+    <!-- HISTORIK -->
+    <section class="grid g16">
+      <div class="card glass" style="grid-column: span 12;">
+        <div class="title">Historik (månadsvis) – ISK & Portfölj högsta</div>
+        <div class="row between mt8">
+          <div class="row g8">
+            <label>Startmånad (YYYY‑MM)
+              <input id="inp-hist-start" type="text" placeholder="2025-08" style="min-width:120px" />
+            </label>
+            <button id="btn-hist-update" class="btn ghost">Uppdatera historik nu</button>
+            <button id="btn-hist-clear" class="btn ghost">Töm historik</button>
+          </div>
+          <div class="row g8"><span class="chip ghost" id="hist-meta">—</span></div>
+        </div>
+        <div class="hist-wrap">
+          <canvas id="hist-canvas" width="1024" height="360" aria-label="Historikdiagram" role="img"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid g16">
+      <div class="card glass" style="grid-column: span 12;">
+        <div class="title">Förklaring</div>
+        <p class="small">Historiken lagras lokalt (exporteras med konfigen). ”Återställ trappa” sätter standardprocenter (100/89,29/80/72,86/65,71). Allt i EUR, HICP‑indexerat.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js?v=1.8.4b"></script>
+</body>
+</html>
