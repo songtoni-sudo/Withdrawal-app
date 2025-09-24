@@ -3,27 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Uttagsdashboard v1.8.4b — Guardrails + FR + HICP + Historik</title>
-  <link rel="stylesheet" href="styles.css?v=1.8.4b" />
+  <title>Guardrails Withdrawal Planner v1.9.0</title>
+  <meta name="description" content="Keeps your spending steady in today’s money while adjusting in downturns and recoveries, so your savings last. Index‑All‑In + Guardrails." />
+  <link rel="stylesheet" href="styles.css?v=1.9.0" />
 </head>
 <body>
-  <div id="bg-azure" class="bg-azure" aria-hidden="true"></div>
-  <div id="bg-overlay" class="bg-overlay" aria-hidden="true"></div>
-
-  <header class="appbar glass">
+  <div class="bg"></div>
+  <header class="appbar">
     <div class="wrap row between">
       <div class="row g12">
         <div class="brand-dot"></div>
         <div>
-          <div class="brand">Uttagsdashboard</div>
-          <div class="sub muted">Index‑All‑In · Guardrails · EUR · <span class="badge">v1.8.4b</span></div>
+          <div class="brand">Guardrails Withdrawal Planner</div>
+          <div class="sub muted">Index‑All‑In · Guardrails · <span class="badge">v1.9.0</span></div>
         </div>
       </div>
       <div class="row g8">
-        <button id="btn-save" class="btn ghost">Spara</button>
         <button id="btn-export" class="btn ghost">Export (.json)</button>
         <label class="btn ghost" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">Import
           <input id="file-import" type="file" accept="application/json" hidden /></label>
+        <button id="btn-save" class="btn ghost">Spara</button>
       </div>
     </div>
   </header>
@@ -31,21 +30,22 @@
   <main class="wrap content">
     <div id="err" class="err" hidden></div>
 
+    <!-- DASHBOARD -->
     <section class="grid g16">
-      <div class="card kpi glass" style="grid-column: span 4;">
-        <div class="title">Månadens total</div>
-        <div class="value" id="kpi-total">–</div>
-        <div class="hint">= Realt uttag × HICP‑faktor</div>
+      <div class="card kpi" style="grid-column: span 4;">
+        <div class="title">Månadens total (nom)</div>
+        <div class="value" id="kpi-total">—</div>
+        <div class="hint">= Föreslagen real × inflationsfaktor</div>
       </div>
-      <div class="card kpi glass" style="grid-column: span 4;">
+      <div class="card kpi" style="grid-column: span 4;">
         <div class="title">ISK‑uttag (nom)</div>
-        <div class="value" id="kpi-isk">–</div>
-        <div class="hint">Fas‑styrt · Stötdämpare</div>
+        <div class="value" id="kpi-isk">—</div>
+        <div class="hint">Restbehov efter pensioner (om du använder dem)</div>
       </div>
-      <div class="card kpi glass" style="grid-column: span 4;">
+      <div class="card kpi" style="grid-column: span 4;">
         <div class="title">Status</div>
         <div class="row g10">
-          <span id="badge" class="pill">–</span>
+          <span id="badge" class="pill">—</span>
           <span id="badge-txt" class="muted small">Ingen signal</span>
         </div>
         <div id="drawdown-line" class="tiny muted mt8"></div>
@@ -53,102 +53,176 @@
     </section>
 
     <section class="grid g16">
-      <div class="card glass" style="grid-column: span 7;">
+      <div class="card" style="grid-column: span 7;">
         <div class="title-row">
-          <div class="title">Regler & beslut</div>
-          <span class="chip" id="kpi-phase">Fas –</span>
+          <div class="title">Dashboard – varje avstämning</div>
+          <span class="chip" id="kpi-phase">Fas —</span>
         </div>
         <div class="rows">
-          <div class="row between"><div class="muted">Aktuell real nivå</div><div class="mono strong" id="kpi-real-current">–</div></div>
-          <div class="row between"><div class="muted">Föreslagen real nivå</div><div class="mono strong" id="kpi-real-proposed">–</div></div>
-          <div class="row between"><div class="muted">HICP‑faktor (I)</div><div class="mono" id="kpi-hicp">–</div></div>
-          <div class="row between"><div class="muted">Drawdown mot topp</div><div class="mono" id="kpi-dd">–</div></div>
-          <div class="row between"><div class="muted">Finansieringsgrad FR</div><div class="mono" id="kpi-fr">–</div></div>
+          <div class="row between"><div class="muted">Aktuell real nivå <span class="info" title="Senast verkställda reala månadsbelopp."></span></div><div class="mono strong" id="kpi-real-current">—</div></div>
+          <div class="row between"><div class="muted">Föreslagen real nivå <span class="info" title="Beräknad enligt guardrails och softenings."></span></div><div class="mono strong" id="kpi-real-proposed">—</div></div>
+          <div class="row between"><div class="muted">Drawdown mot topp (ATH) <span class="info" title="Hur långt under högsta portföljvärdet du ligger."></span></div><div class="mono" id="kpi-dd">—</div></div>
+          <div class="row between"><div class="muted">Funding ratio (FR, valfritt) <span class="info" title="Hur bekväm nivån är givet portföljens storlek."></span></div><div class="mono" id="kpi-fr">—</div></div>
         </div>
         <div class="hr"></div>
         <div class="row g8">
           <button id="btn-commit" class="btn">Verkställ ny nivå</button>
-          <button id="btn-sync" class="btn ghost">Synka ”Aktuell = Normal”</button>
-          <span class="hint" id="commit-hint">Cadens: Kvartal (90 d) · Du kan ändra nu.</span>
+          <button id="btn-sync" class="btn ghost">Synka ”Aktuell → Normal”</button>
+          <span class="hint" id="commit-hint">Cadens: Månadsvis · Du kan ändra nu.</span>
         </div>
       </div>
 
-      <div class="card glass" style="grid-column: span 5;">
-        <div class="title">Drawdown‑räcken</div>
+      <div class="card" style="grid-column: span 5;">
+        <div class="title">Guardrails (multiplikatorer per band)</div>
+        <div class="row g8">
+          <label>Profil
+            <select id="sel-profile">
+              <option value="balanced">Balanced (rekommenderad)</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="conservative">Conservative</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label>Välj bandmodell
+            <select id="sel-bands-mode">
+              <option value="bands">Diskreta band (default)</option>
+              <option value="linear">Linjär (power users)</option>
+            </select>
+          </label>
+        </div>
         <table class="tbl">
           <thead><tr><th>DD‑intervall</th><th>Multiplikator</th><th>Real nivå</th></tr></thead>
           <tbody id="tbl-rails"></tbody>
         </table>
-        <div class="row g8 mt8">
-          <button id="btn-reset-rails" class="btn ghost tiny">Återställ trappa</button>
+        <div id="custom-edit" class="mt8" hidden>
+          <div class="two">
+            <label>0–10 % <input id="m10" type="number" step="0.1" /></label>
+            <label>10–20 % <input id="m20" type="number" step="0.1" /></label>
+          </div>
+          <div class="two">
+            <label>20–30 % <input id="m30" type="number" step="0.1" /></label>
+            <label>30–40 % <input id="m40" type="number" step="0.1" /></label>
+          </div>
+          <div class="two">
+            <label>40–50 % <input id="m50" type="number" step="0.1" /></label>
+            <label>—</label>
+          </div>
         </div>
       </div>
     </section>
 
+    <!-- SETTINGS -->
     <section class="grid g16">
-      <div class="card glass" style="grid-column: span 7;">
-        <div class="title">Inställningar (EUR)</div>
-        <div class="form">
-          <label>Normalnivå (realt)
-            <div class="field"><input id="inp-normal" type="text" inputmode="decimal" data-type="currency" placeholder="7 000" /><span class="suffix">€</span></div>
+      <div class="card" style="grid-column: span 7;">
+        <div class="title">Inställningar (set once)</div>
+        <div class="two">
+          <label>Normal (realt) <span class="info" title="Din månadsutgift i dagens prisnivå. Vi bevarar köpkraften."></span>
+            <div class="field"><input id="inp-normal" type="text" inputmode="decimal" /><span class="suffix">€</span></div>
           </label>
+          <label>Födelsedatum (YYYY‑MM‑DD) <input id="inp-birth" type="text" placeholder="1976-01-01" /></label>
+        </div>
 
-          <label>HICP‑bas (indexnivå)</label>
+        <div class="two">
+          <label>Portfölj nu (ISK, €) <div class="field"><input id="inp-isk" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+          <label>Portfölj högsta (ATH, €) <div class="field"><input id="inp-peak" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+        </div>
+
+        <div class="two">
+          <label>Review cadence
+            <select id="sel-cadence"><option value="m">Monthly (default)</option><option value="q">Quarterly</option></select>
+          </label>
+          <label>Auto‑ATH
+            <select id="sel-auto-peak"><option value="on">På</option><option value="off">Av</option></select>
+          </label>
+        </div>
+
+        <div class="two">
+          <label>Auto‑apply ”Normal”
+            <select id="sel-auto-sync"><option value="off">Av</option><option value="on">På</option></select>
+          </label>
+          <label>—</label>
+        </div>
+
+        <div class="hr"></div>
+        <div class="title small">Inflation index</div>
+        <div class="two">
+          <label>Typ
+            <select id="sel-infl-type">
+              <option value="hicp">HICP (EU, auto)</option>
+              <option value="manual">Manual (CPI/HICP)</option>
+            </select>
+          </label>
+          <label>Land (HICP)
+            <select id="sel-country">
+              <option value="ES">Spain</option>
+              <option value="SE">Sweden</option>
+              <option value="DE">Germany</option>
+              <option value="FR">France</option>
+              <option value="IT">Italy</option>
+              <option value="NL">Netherlands</option>
+              <option value="PT">Portugal</option>
+              <option value="IE">Ireland</option>
+              <option value="BE">Belgium</option>
+              <option value="FI">Finland</option>
+              <option value="AT">Austria</option>
+              <option value="GR">Greece</option>
+              <option value="DK">Denmark</option>
+              <option value="NO">Norway</option>
+              <option value="PL">Poland</option>
+              <option value="CZ">Czechia</option>
+              <option value="HU">Hungary</option>
+              <option value="RO">Romania</option>
+              <option value="BG">Bulgaria</option>
+              <option value="HR">Croatia</option>
+              <option value="EE">Estonia</option>
+              <option value="LV">Latvia</option>
+              <option value="LT">Lithuania</option>
+              <option value="LU">Luxembourg</option>
+              <option value="SI">Slovenia</option>
+              <option value="SK">Slovakia</option>
+            </select>
+          </label>
+        </div>
+        <div class="row g8">
+          <button id="btn-set-latest" class="btn ghost">Set to Latest</button>
           <div class="row g8">
-            <input id="inp-hicp-base" type="text" inputmode="decimal" placeholder="126,88" style="flex:1" />
-            <button id="btn-base-inline" class="btn ghost">← Sätt till “Senast”</button>
+            <span class="chip ghost" id="hicp-latest">—</span>
+            <span class="chip ghost" id="hicp-date">—</span>
           </div>
+        </div>
+        <div class="two mt8">
+          <label>Manuell indexnivå <input id="inp-hicp-manual" type="text" inputmode="decimal" placeholder="t.ex. 126,88" /></label>
+          <label>HICP‑bas (din startnivå) <input id="inp-hicp-base" type="text" inputmode="decimal" placeholder="sätts = Senast"></label>
+        </div>
 
-          <div class="two">
-            <label>TJP netto (€/mån) <div class="field"><input id="inp-tjp" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
-            <label>PPM netto (€/mån) <div class="field"><input id="inp-ppm" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
-          </div>
-          <div class="two">
-            <label>INK netto (€/mån) <div class="field"><input id="inp-ink" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
-            <label>Födelsedatum (YYYY‑MM‑DD)<input id="inp-birth" type="text" placeholder="1976-01-01" /></label>
-          </div>
-
-          <div class="two">
-            <label>ISK (nominellt €) <div class="field"><input id="inp-isk" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
-            <label>Portfölj högsta (€) <div class="field"><input id="inp-peak" type="text" inputmode="decimal" data-type="currency" /><span class="suffix">€</span></div></label>
-          </div>
-
-          <div class="two">
-            <label>Ändringsfrekvens<select id="sel-cadence"><option value="q">Kvartal (90 d)</option><option value="m">Månadsvis (30 d)</option></select></label>
-            <label>Auto‑ATH<select id="sel-auto-peak"><option value="on">På</option><option value="off">Av</option></select></label>
-          </div>
-
-          <div class="two">
-            <label>Auto‑verkställ ”Normal”
-              <select id="sel-auto-sync"><option value="off">Av</option><option value="on">På</option></select>
-            </label>
-            <label>—</label>
-          </div>
-
-          <div class="two">
-            <label>Remote Config URL (JSON)<input id="inp-remote-url" type="url" placeholder="https://..." /></label>
-            <label>Ladda Remote vid start<select id="sel-remote-first"><option value="off">Av</option><option value="on">På</option></select></label>
-          </div>
+        <div class="hr"></div>
+        <div class="two">
+          <label>Remote Config URL (JSON) <input id="inp-remote-url" type="url" placeholder="https://..." /></label>
+          <label>Ladda Remote vid start <select id="sel-remote-first"><option value="off">Av</option><option value="on">På</option></select></label>
         </div>
       </div>
 
-      <div class="card glass" style="grid-column: span 5;">
-        <div class="title">HICP Spanien – senast</div>
-        <div class="row between">
-          <div class="value small" id="hicp-latest">–</div>
-          <span class="chip ghost" id="hicp-date">–</span>
+      <div class="card" style="grid-column: span 5;">
+        <div class="title">Softeners (komfort)</div>
+        <div class="two">
+          <label>Inflation pause <select id="sel-infl-pause"><option value="on">På</option><option value="off">Av</option></select></label>
+          <label>Max change per review (±%) <input id="inp-max-chg" type="number" step="1" min="0" max="100" value="10" /></label>
         </div>
-        <div class="two mt8">
-          <label>Manuell HICP (fallback)<input id="inp-hicp-manual" type="text" inputmode="decimal" placeholder="126,88" /></label>
+        <div class="two">
+          <label>Spending floor (realt €/mån) <input id="inp-floor" type="text" inputmode="decimal" placeholder="0" /></label>
           <label>—</label>
         </div>
-        <div class="hint mt8">Proxy: ECB SDMX. Vid fel – skriv nivå i “Manuell HICP” eller sätt bas manuellt.</div>
+        <div class="hint small">”Inflation pause” stoppar höjning om året var negativt realt eller uttagskvoten är över målnivå.</div>
+
+        <div class="hr"></div>
+        <div class="title small">HICP / CPI (snabbguide)</div>
+        <p class="small">Vi använder officiellt index för att hålla köpkraften konstant. ”Set to Latest” sätter din bas till senaste värde så att dagens ”Normal (realt)” motsvarar dagens priser.</p>
       </div>
     </section>
 
     <!-- HISTORIK -->
     <section class="grid g16">
-      <div class="card glass" style="grid-column: span 12;">
+      <div class="card" style="grid-column: span 12;">
         <div class="title">Historik (månadsvis) – ISK & Portfölj högsta</div>
         <div class="row between mt8">
           <div class="row g8">
@@ -160,20 +234,63 @@
           </div>
           <div class="row g8"><span class="chip ghost" id="hist-meta">—</span></div>
         </div>
-        <div class="hist-wrap">
-          <canvas id="hist-canvas" width="1024" height="360" aria-label="Historikdiagram" role="img"></canvas>
-        </div>
+        <div class="hist-wrap"><canvas id="hist-canvas" width="1024" height="360"></canvas></div>
       </div>
     </section>
 
+    <!-- USER GUIDE -->
     <section class="grid g16">
-      <div class="card glass" style="grid-column: span 12;">
-        <div class="title">Förklaring</div>
-        <p class="small">Historiken lagras lokalt (exporteras med konfigen). ”Återställ trappa” sätter standardprocenter (100/89,29/80/72,86/65,71). Allt i EUR, HICP‑indexerat.</p>
+      <div class="card" style="grid-column: span 12;">
+        <details open>
+          <summary class="title">User Guide (short)</summary>
+          <ul class="small">
+            <li><b>What it does:</b> Keeps your spending steady in today’s money while adjusting in downturns and recoveries.</li>
+            <li><b>Quick start:</b> Set <i>Normal (real)</i>, choose <i>HICP/CPI</i>, enter <i>Portfolio now</i> & <i>High (ATH)</i>. You’re ready.</li>
+            <li><b>Ideas:</b> Keep buying power · Be flexible in downturns · Make it automatic.</li>
+            <li><b>Review:</b> See <i>Current</i> vs <i>Proposed</i>, <i>Drawdown</i>, <i>FR</i>. Click <i>Apply</i> to accept.</li>
+          </ul>
+        </details>
+        <details>
+          <summary class="title">User Guide (full text)</summary>
+          <pre class="guide">
+Keeps your spending steady in today’s money while automatically cutting a bit in bad markets and allowing a bit more in good markets — so your savings last.
+
+Quick Start (3 minutes)
+• Normal (real): e.g., €6,600.
+• Set HICP/CPI country (Set to Latest) — manual allowed.
+• Portfolio now & high (ATH).
+Then the app proposes a safe monthly amount each review.
+
+Three ideas
+• Keep buying power (index with inflation).
+• Be flexible in rough markets (temporary trims).
+• Make it automatic (clear guardrails).
+
+Screen by screen: Dashboard / Settings / Guardrails / Softeners — as described above.
+
+Guardrails profiles
+• Balanced (default): 90/80/70/60/50.
+• Aggressive: 87.5/75/62.5/50/40 (floor).
+• Conservative: 92.5/85/77.5/70/65.
+Custom: type your own.
+
+Softeners (optional)
+• Inflation pause (on): if last year real return < 0 or WR > start target.
+• Max change per review: ±10% default.
+• Spending floor: off by default.
+
+Example
+Normal €6,600; ATH €1,338,877; Now €1,004,158 (−25%).
+Balanced ⇒ 75% ⇒ €4,950.
+
+Safety note
+This app guides spending; it does not invest your money.
+          </pre>
+        </details>
       </div>
     </section>
   </main>
 
-  <script src="app.js?v=1.8.4b"></script>
+  <script src="app.js?v=1.9.0"></script>
 </body>
 </html>
