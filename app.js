@@ -390,3 +390,97 @@ async function main(){
 
 window.addEventListener('error', e=>{ const el=Q('err'); el.textContent='Fel: '+(e.message||'Okänt'); el.hidden=false; });
 document.addEventListener('DOMContentLoaded', main);
+/* === Tooltips — injicera (i)-ikoner + popup-bubblor === */
+(function(){
+  const TIPS = {
+    'inp-normal': 'Din månadskonsumtion i dagens priser. Vi bevarar köpkraften via HICP.',
+    'inp-isk': 'Portföljens aktuella värde i EUR (konverterat till EUR om nödvändigt).',
+    'inp-peak': 'Högsta uppmätta portföljvärde (ATH). Används för drawdown. Med Auto‑ATH uppdateras detta automatiskt.',
+    'sel-infl-type': 'HICP: hämtar senaste index automatiskt. Manuell: skriv in indexnivån själv.',
+    'sel-country': 'Land för HICP-serien (Eurostat/ECB).',
+    'inp-hicp-base': 'Din startnivå för index. “Set to Latest” sätter denna = senaste värde.',
+    'sel-profile': 'Hur snabbt du stramar åt i nedgång. Balanced bibehåller uttagskvoten; Aggressive sänker mer; Conservative sänker mindre.',
+    'sel-bands-mode': 'Bands = fasta steg (10/20/30/40/50 %). Linjär = mjuk kurva (t.ex. Balanced: 1 − d).',
+    'sel-auto-peak': 'På: uppdaterar ATH automatiskt när portföljen gör ny topp.',
+    'sel-auto-sync': 'På: styr tillbaka Aktuell nivå mot Normal när marknaden läker.',
+    'sel-infl-pause': 'Stoppa inflationshöjning om året var negativt realt eller WR över mål vid start.',
+    'inp-max-chg': 'Begränsa max steg upp/ner per avstämning (t.ex. ±10 %) för mjukare rörelser.',
+    'inp-floor': 'Lägsta reala månadsbelopp (t.ex. basboende + mat) – nivån går aldrig under detta.',
+    'inp-tjp': 'Tjänstepension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'inp-ppm': 'Premiepension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'inp-ink': 'Inkomstpension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'sel-index-pensions': 'På: pensioner behandlas som reala och indexeras med HICP före avdrag. Av: behandlas som nominella.',
+    'kpi-fr': 'Funding Ratio = ISK / nuvärde av din planerade konsumtion. ≥ 1,0 = planen är finansierad.',
+    'kpi-isk': 'Nominellt uttag från ISK efter avdrag för TJP + PPM + INK.'
+  };
+
+  let bubble;
+  function getBubble(){
+    if(!bubble){
+      bubble = document.createElement('div');
+      bubble.className = 'tip-bubble';
+      bubble.setAttribute('role','tooltip');
+      bubble.innerHTML = '<div class="tip-close"><button aria-label="Stäng">✕</button></div><div class="tip-txt"></div>';
+      document.body.appendChild(bubble);
+      bubble.querySelector('.tip-close button').addEventListener('click', hideTip);
+      window.addEventListener('scroll', hideTip, {passive:true});
+      window.addEventListener('resize', hideTip);
+      document.addEventListener('click', (e)=> {
+        if(!bubble.contains(e.target) && !e.target.classList.contains('tip-i')) hideTip();
+      });
+    }
+    return bubble;
+  }
+  function showTip(btn){
+    const b = getBubble();
+    b.querySelector('.tip-txt').textContent = btn.dataset.tip || '';
+    b.style.display = 'block';
+    // placera bubblan strax ovanför/vid sidan om knappen
+    const r = btn.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 20, r.left + (r.width/2) + 4);
+    const y = Math.max(12, r.top - 10);
+    b.style.left = `${x}px`;
+    b.style.top  = `${y}px`;
+  }
+  function hideTip(){ if(bubble) bubble.style.display = 'none'; }
+
+  function attachTip(el, text){
+    if(!el) return;
+    const host = el.closest('label') || el.parentElement || el;
+    // skapa (i)-ikon om det inte redan finns en
+    if(host.querySelector('.tip-i')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tip-i';
+    btn.setAttribute('aria-label','Mer information');
+    btn.textContent = 'i';
+    btn.dataset.tip = text;
+    // placera efter label‑texten (innan ev. input‑container)
+    if(host.firstChild && host.firstChild.nodeType === 3){ // textnod
+      host.insertBefore(btn, host.childNodes[1] || null);
+    } else {
+      host.appendChild(btn);
+    }
+    // hover (desktop)
+    btn.addEventListener('mouseenter', ()=> showTip(btn));
+    btn.addEventListener('mouseleave', hideTip);
+    // fokus/klik (mobil & tillgänglighet)
+    btn.addEventListener('focus', ()=> showTip(btn));
+    btn.addEventListener('blur', hideTip);
+    btn.addEventListener('click', (e)=> {
+      e.stopPropagation();
+      const visible = bubble && bubble.style.display === 'block';
+      if(visible) hideTip(); else showTip(btn);
+    });
+  }
+
+  // Kör efter att sidan laddats: injicera tooltips på kända id:n
+  window.__attachTooltips = function(){
+    Object.entries(TIPS).forEach(([id,txt])=>{
+      const el = document.getElementById(id);
+      if(el) attachTip(el, txt);
+    });
+  };
+})();
+  // sist i main():
+  if (window.__attachTooltips) window.__attachTooltips();
