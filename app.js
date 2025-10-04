@@ -1,46 +1,40 @@
-// v1.9.0 – Guardrails enligt User Guide
-const KEY='uttags_config_v19';
+
+// v1.9.2 — Tooltips + thousand separators + pensions back
+const KEY='uttags_config_v192';
 const state={ hicpLatest:null, hicpPeriod:'', proposedReal:null };
 
 const fmtLocale = (v,d=0)=> isFinite(v)? new Intl.NumberFormat(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):'—';
 const fmtEUR = (v,d=0)=> isFinite(v)? `${fmtLocale(v,d)} €`:'—';
 const fmtPct = (x,d=1)=> `${(x*100).toFixed(d).replace('.',',')} %`;
-const parseCurrency=s=>{ if(typeof s!=='string') return Number(s)||0; s=s.replace(/[^0-9,.-]/g,'').replace(/\s/g,''); if(s.count){} if(s.count){}
-  if(s.count){}; if(s.includes(',')&&s.includes('.')){const i=s.lastIndexOf(','); return Number(s.slice(0,i).replace(/[.,]/g,'')+'.'+s.slice(i+1).replace(/[^0-9]/g,''))||0;}
-  if(s.includes(',')) return Number(s.replace('.', '').replace(',', '.'))||0; return Number(s)||0; };
+
+function parseCurrency(s){
+  if(typeof s!=='string') return Number(s)||0;
+  s=s.trim(); if(!s) return 0;
+  s=s.replace(/\s+/g,'');
+  if(/,\d{1,2}$/.test(s) && s.indexOf('.')>=0){ s=s.replace(/\./g,'').replace(',','.'); return Number(s)||0; }
+  if(/,/.test(s) && !/\.\d{1,2}$/.test(s)){ s=s.replace(/\./g,'').replace(',','.'); return Number(s)||0; }
+  s=s.replace(/,/g,''); return Number(s)||0;
+}
 const Q=id=>document.getElementById(id);
 
-// ====== defaults & storage
 function def(){ return {
-  // Core
   normalReal:6600, currentReal:6600,
   iskNom:0, peakNom:0, birth:'1976-01-01',
-  // Cadence & autos
   cadence:'m', autoPeak:'on', autoSync:'off',
-  // HICP/CPI
   inflType:'hicp', country:'ES', hicpBase:126.88, hicpManual:'',
-  // Guardrails profile
   profile:'balanced', bandsMode:'bands',
-  // Custom band multipliers (procent 0–100)
   customMul:[90,80,70,60,50],
-  // Softeners
   inflPause:'on', maxChangePct:10, floorReal:0,
-  // Remote
   remoteUrl:'', remoteFirst:'off',
-  // History
   histStartYM:'2025-08', hist:[],
-  // Targets
-  wrTarget:null,
-  lastChangeTs:'', lastRealLevel:6600,
+  wrTarget:null, lastChangeTs:'', lastRealLevel:6600,
+  tjpNom:0, ppmNom:0, inkNom:0, indexPensions:'off'
 };}
-function migrate(cfg){
-  const d=def();
-  return {...d, ...(cfg||{})};
-}
+function migrate(cfg){ const d=def(); return {...d, ...(cfg||{})}; }
 function load(){ try{ return migrate(JSON.parse(localStorage.getItem(KEY)||'null')); }catch{ return def(); } }
 function save(c){ localStorage.setItem(KEY, JSON.stringify(c)); }
 
-// ====== HICP (ECB SDMX)
+// HICP via ECB SDMX proxy
 async function fetchHICP(country='ES'){
   try{
     const q=encodeURIComponent(`https://sdw-wsrest.ecb.europa.eu/service/data/ICP/M.${country}.N.000000.4.INX?lastNObservations=36&detail=dataonly&format=jsondata`);
@@ -55,46 +49,33 @@ async function fetchHICP(country='ES'){
   }catch(e){ return null; }
 }
 
-// ====== math helpers
 const guardrailIndex = dd => dd<0.10?0 : dd<0.20?1 : dd<0.30?2 : dd<0.40?3 : 4;
-function profileBands(profile){
-  // return multipliers in percent at 10/20/30/40/50 (right-edge of each band)
-  if(profile==='aggressive') return [87.5,75,62.5,50,40];
-  if(profile==='conservative') return [92.5,85,77.5,70,65];
-  // balanced default
+function profileBands(p){
+  if(p==='aggressive') return [87.5,75,62.5,50,40];
+  if(p==='conservative') return [92.5,85,77.5,70,65];
   return [90,80,70,60,50];
 }
-function linearMultiplier(profile, d){
-  // Power user linear rules with floors
-  if(profile==='aggressive'){ const m=1-1.25*d; return Math.max(m,0.40); }
-  if(profile==='conservative'){ return 1-0.75*d; }
-  return 1-d; // balanced
+function linearMultiplier(p, d){
+  if(p==='aggressive'){ const m=1-1.25*d; return Math.max(m,0.40); }
+  if(p==='conservative'){ return 1-0.75*d; }
+  return 1-d;
 }
 function multiplierFrom(cfg, dd){
-  if(cfg.profile==='custom'){
-    const arr=cfg.customMul||[90,80,70,60,50];
-    const idx=guardrailIndex(dd); return (arr[idx]||arr[arr.length-1])/100;
-  }
-  if(cfg.bandsMode==='linear'){
-    return linearMultiplier(cfg.profile, dd);
-  }else{
-    const arr=profileBands(cfg.profile);
-    const idx=guardrailIndex(dd);
-    return (arr[idx])/100;
-  }
+  if(cfg.profile==='custom'){ const arr=cfg.customMul||[90,80,70,60,50]; return (arr[guardrailIndex(dd)]||50)/100; }
+  if(cfg.bandsMode==='linear') return linearMultiplier(cfg.profile, dd);
+  return profileBands(cfg.profile)[guardrailIndex(dd)]/100;
 }
 function AF(n,rm){ return rm<=0? n : (1-Math.pow(1+rm,-n))/rm; }
 function computeFR(cfg, realMonthly){
   const now=new Date(); const [Y,M,D]=cfg.birth.split('-').map(Number); const b=new Date(Y,M-1,D);
   const age=(now-b)/(365.2425*24*3600*1000); const mLeft=Math.max(0, Math.round((90-age)*12));
-  const rm=Math.pow(1+0.047,1/12)-1; // 4,7 % real antagande
+  const rm=Math.pow(1+0.047,1/12)-1;
   const PV_need=realMonthly*AF(mLeft,rm);
-  const PV=cfg.iskNom; // enkel FR (utan pensioner här)
+  const PV=cfg.iskNom;
   return {FR: PV_need>0? PV/PV_need:0};
 }
 function withdrawalRate(monthly, portfolioNow){ return portfolioNow>0? (12*monthly)/portfolioNow : Infinity; }
 
-// ====== history helpers
 function ymOfClosedMonth(d=new Date()){ const dt=new Date(d.getFullYear(), d.getMonth(), 1); dt.setMonth(dt.getMonth()-1); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; }
 function ymToDate(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1); }
 function ensureHistoryAndMaybeAppend(cfg){
@@ -102,8 +83,7 @@ function ensureHistoryAndMaybeAppend(cfg){
   if(!Array.isArray(cfg.hist)) cfg.hist=[];
   const closed=ymOfClosedMonth(); const start=cfg.histStartYM;
   if(ymToDate(closed) < ymToDate(start)) return;
-  const lastYM=cfg.hist.length?cfg.hist[cfg.hist.length-1].ym:null;
-  if(!lastYM){ cfg.hist.push({ym:start, isk:cfg.iskNom, peak:cfg.peakNom}); }
+  if(!cfg.hist.length){ cfg.hist.push({ym:start, isk:cfg.iskNom, peak:cfg.peakNom}); }
   if(cfg.hist[cfg.hist.length-1].ym !== closed){
     let cur=ymToDate(cfg.hist[cfg.hist.length-1].ym);
     while(true){
@@ -129,15 +109,11 @@ function drawHistory(cfg){
   const data=cfg.hist||[]; if(!data.length){ ctx.fillStyle='#5f7a94'; ctx.font=`${12*dpr}px -apple-system,Segoe UI,Roboto`; ctx.fillText('Ingen historik ännu.',16*dpr,24*dpr); return; }
   const xs=data.map(d=>d.ym); const ys1=data.map(d=>d.isk||0), ys2=data.map(d=>d.peak||0);
   const yMax=Math.max(1, Math.max(...ys1,...ys2)); const yMin=0;
-  // grid
   ctx.strokeStyle='rgba(6,148,240,.15)'; ctx.lineWidth=1*dpr;
   for(let i=0;i<=5;i++){ const y=padT+(H-padT-padB)*i/5; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); }
-  // axes
   ctx.strokeStyle='rgba(6,148,240,.40)'; ctx.lineWidth=1.5*dpr; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
-  // y labels
   ctx.fillStyle='#0b3b6f'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font=`${12*dpr}px -apple-system,Segoe UI,Roboto`;
   for(let i=0;i<=5;i++){ const val=yMax - (yMax-yMin)*i/5; const y=padT+(H-padT-padB)*i/5; ctx.fillText(fmtLocale(Math.round(val)), padL-8*dpr, y); }
-  // x labels
   ctx.fillStyle='#466079'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
   const n=xs.length, w=(W-padL-padR)/Math.max(1,n-1); for(let i=0;i<n;i++){ const x=padL+w*i; const y=H-padB+16*dpr; ctx.fillText(xs[i],x,y); }
   function plot(ys,color){ ctx.strokeStyle=color; ctx.lineWidth=2.5*dpr; ctx.beginPath();
@@ -146,14 +122,95 @@ function drawHistory(cfg){
   plot(ys2,'#0b3b6f'); plot(ys1,'#0aa2ff');
 }
 
-// ====== core compute & render
+// Currency inputs
+function formatCurrencyInput(el){
+  const show=()=>{ const n=parseCurrency(el.value); el.value = n? new Intl.NumberFormat(undefined).format(n): ''; };
+  el.addEventListener('blur', show);
+  show();
+}
+function bindCurrencyFields(){
+  ['inp-normal','inp-isk','inp-peak','inp-floor','inp-tjp','inp-ppm','inp-ink'].forEach(id=>{
+    const el=Q(id); if(el) formatCurrencyInput(el);
+  });
+}
+function readCurrency(id){ return parseCurrency(Q(id).value); }
+
+// Tooltips
+(function(){
+  const TIPS = {
+    'inp-normal': 'Din månadskonsumtion i dagens priser. Vi bevarar köpkraften via HICP.',
+    'inp-isk': 'Portföljens aktuella värde i EUR (konverterat till EUR om nödvändigt).',
+    'inp-peak': 'Högsta uppmätta portföljvärde (ATH). Används för drawdown. Auto‑ATH kan uppdatera detta.',
+    'sel-infl-type': 'HICP: hämtar senaste index automatiskt. Manuell: skriv in indexnivån själv.',
+    'sel-country': 'Land för HICP-serien (Eurostat/ECB).',
+    'inp-hicp-base': 'Din startnivå för index. “Set to Latest” sätter denna = senaste värde.',
+    'sel-profile': 'Hur snabbt du stramar åt i nedgång. Balanced bibehåller uttagskvoten; Aggressive sänker mer; Conservative sänker mindre.',
+    'sel-bands-mode': 'Bands = fasta steg (10/20/30/40/50 %). Linjär = mjuk kurva (t.ex. Balanced: 1 − d).',
+    'sel-auto-peak': 'På: uppdaterar ATH automatiskt när portföljen gör ny topp.',
+    'sel-auto-sync': 'På: styr tillbaka Aktuell nivå mot Normal när marknaden läker.',
+    'sel-infl-pause': 'Stoppa inflationshöjning om året var negativt realt eller WR över mål vid start.',
+    'inp-max-chg': 'Begränsa max steg upp/ner per avstämning (t.ex. ±10 %) för mjukare rörelser.',
+    'inp-floor': 'Lägsta reala månadsbelopp (t.ex. basboende + mat) – nivån går aldrig under detta.',
+    'inp-tjp': 'Tjänstepension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'inp-ppm': 'Premiepension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'inp-ink': 'Inkomstpension, netto €/månad. Dras från ISK‑uttaget (nom).',
+    'sel-index-pensions': 'På: pensioner behandlas som reala och indexeras med HICP före avdrag. Av: behandlas som nominella.',
+    'kpi-fr': 'Funding Ratio = ISK / nuvärde av din planerade konsumtion. ≥ 1,0 = planen är finansierad.',
+    'kpi-isk': 'Nominellt uttag från ISK efter avdrag för TJP + PPM + INK.'
+  };
+  let bubble;
+  function getBubble(){
+    if(!bubble){
+      bubble = document.createElement('div');
+      bubble.className = 'tip-bubble';
+      bubble.setAttribute('role','tooltip');
+      bubble.innerHTML = '<div class="tip-close"><button aria-label="Stäng">✕</button></div><div class="tip-txt"></div>';
+      document.body.appendChild(bubble);
+      bubble.querySelector('.tip-close button').addEventListener('click', hideTip);
+      window.addEventListener('scroll', hideTip, {passive:true});
+      window.addEventListener('resize', hideTip);
+      document.addEventListener('click', (e)=> {
+        if(!bubble.contains(e.target) && !e.target.classList.contains('tip-i')) hideTip();
+      });
+    }
+    return bubble;
+  }
+  function showTip(btn){
+    const b = getBubble();
+    b.querySelector('.tip-txt').textContent = btn.dataset.tip || '';
+    b.style.display = 'block';
+    const r = btn.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 20, r.left + (r.width/2) + 4);
+    const y = Math.max(12, r.top - 10);
+    b.style.left = `${x}px`; b.style.top  = `${y}px`;
+  }
+  function hideTip(){ if(bubble) bubble.style.display = 'none'; }
+  function attachTip(el, text){
+    if(!el) return;
+    const host = el.closest('label') || el.parentElement || el;
+    if(host.querySelector('.tip-i')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tip-i'; btn.setAttribute('aria-label','Mer information'); btn.textContent = 'i';
+    btn.dataset.tip = text;
+    if(host.firstChild && host.firstChild.nodeType === 3){ host.insertBefore(btn, host.childNodes[1] || null); }
+    else { host.appendChild(btn); }
+    btn.addEventListener('mouseenter', ()=> showTip(btn));
+    btn.addEventListener('mouseleave', hideTip);
+    btn.addEventListener('focus', ()=> showTip(btn));
+    btn.addEventListener('blur', hideTip);
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); const visible = bubble && bubble.style.display === 'block'; if(visible) hideTip(); else showTip(btn); });
+  }
+  window.__attachTooltips = function(){
+    Object.entries(TIPS).forEach(([id,txt])=>{ const el = document.getElementById(id); if(el) attachTip(el, txt); });
+  };
+})();
+
+// Core compute & render
 function computeAndRender(cfg, hicpNow){
-  // Auto‑ATH
   if(cfg.autoPeak==='on' && cfg.iskNom>cfg.peakNom){ cfg.peakNom=cfg.iskNom; save(cfg); }
   const dd = (cfg.peakNom>0)? Math.max(0, 1 - cfg.iskNom/cfg.peakNom): 0;
   const {FR}=computeFR(cfg, cfg.currentReal);
 
-  // HICP factor (för nominell visning)
   let H = 1;
   if(cfg.inflType==='hicp'){
     const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
@@ -164,46 +221,39 @@ function computeAndRender(cfg, hicpNow){
     H = isFinite(man)&&man>0? man/base : 1;
   }
 
-  // Guardrails multiplier
   const m = multiplierFrom(cfg, dd);
-  // Föreslaget realt
   let proposed = (cfg.normalReal||0) * m;
 
-  // Softeners
-  //   Inflation pause: om (last year real return < 0) eller (WR > target at start) => höj ej
   if(cfg.inflPause==='on'){
     let negativeRealYear=false;
-    // yoy real: kräver 12 mån historik
     if(cfg.hist && cfg.hist.length>=12){
       const nowISK = cfg.iskNom;
       const thenISK = cfg.hist[cfg.hist.length-12].isk||0;
-      // approximera inflationskvot (om vi har HICP historik här inte hämtas, så lämna denna som portfölj-approx)
-      negativeRealYear = nowISK < thenISK; // konservativ approx
+      negativeRealYear = nowISK < thenISK;
     }
-    // WR target
     if(!cfg.wrTarget && cfg.peakNom>0){ cfg.wrTarget = withdrawalRate(cfg.normalReal, cfg.peakNom); save(cfg); }
     const wrNow = withdrawalRate(proposed, cfg.iskNom);
     if(negativeRealYear || (cfg.wrTarget && wrNow > cfg.wrTarget)){
       proposed = Math.min(proposed, cfg.lastRealLevel||cfg.currentReal);
     }
   }
-  //   Max change per review ±%
   const maxPct = (cfg.maxChangePct||0)/100;
   if(maxPct>0 && (cfg.lastRealLevel||cfg.currentReal)>0){
     const lo = (cfg.lastRealLevel||cfg.currentReal)*(1 - maxPct);
     const hi = (cfg.lastRealLevel||cfg.currentReal)*(1 + maxPct);
     proposed = Math.max(lo, Math.min(hi, proposed));
   }
-  //   Spending floor (realt)
   if((cfg.floorReal||0)>0) proposed = Math.max(proposed, cfg.floorReal);
 
   state.proposedReal = Math.round(proposed);
 
-  // Nominal visning
   const totalNom = state.proposedReal * H;
-  const restNom = totalNom; // pensionsdel ej modellerad i denna version
+  const tjp = (cfg.indexPensions==='on') ? cfg.tjpNom * H : cfg.tjpNom;
+  const ppm = (cfg.indexPensions==='on') ? cfg.ppmNom * H : cfg.ppmNom;
+  const ink = (cfg.indexPensions==='on') ? cfg.inkNom * H : cfg.inkNom;
+  const pensionsNom = (tjp||0)+(ppm||0)+(ink||0);
+  const restNom = Math.max(0, totalNom - pensionsNom);
 
-  // KPI & badges
   Q('kpi-phase').textContent = `Fas ${phaseFromBirth(cfg.birth)}`;
   Q('kpi-real-current').textContent = fmtEUR(cfg.currentReal);
   Q('kpi-real-proposed').textContent = fmtEUR(state.proposedReal);
@@ -217,18 +267,15 @@ function computeAndRender(cfg, hicpNow){
   if(dd>=0.3){ badge='pill danger'; msg='Stor drawdown: tillämpa nedskalning.'; }
   const bEl=Q('badge'); bEl.className=badge; bEl.textContent=({'pill ok':'Grön','pill warn':'Gul','pill danger':'Röd'})[badge]||'—';
   Q('badge-txt').textContent = msg;
-  Q('drawdown-line').textContent = `Drawdown: ${fmtPct(dd,1)} | ISK: ${fmtEUR(cfg.iskNom)} | ATH: ${fmtEUR(cfg.peakNom)}`;
+  Q('drawdown-line').textContent = `Drawdown: ${fmtPct(dd,1)} | ISK: ${fmtEUR(cfg.iskNom)} | ATH: ${fmtEUR(cfg.peakNom)} | Pensioner: ${fmtEUR(pensionsNom)}`;
 
-  // Guardrails tabell
   renderRails(cfg, dd);
 
-  // Cadence
   const days=(cfg.cadence==='q'?90:30);
   const canChange=(!cfg.lastChangeTs)||((new Date()-new Date(cfg.lastChangeTs))/(24*3600*1000)>=days);
   Q('commit-hint').textContent = `Cadens: ${cfg.cadence==='q'?'Kvartal (≥90 d)':'Månadsvis (≥30 d)'} · ${canChange?'Du kan ändra nu.':'Vänta tills viloperioden passerat.'}`;
   Q('btn-commit').disabled=!canChange;
 
-  // Historik
   ensureHistoryAndMaybeAppend(cfg); drawHistory(cfg);
 }
 function phaseFromBirth(birth){
@@ -256,9 +303,7 @@ function renderRails(cfg, dd){
   });
 }
 
-// ====== inputs & actions
 function initInputs(cfg){
-  // Settings
   Q('inp-normal').value=fmtLocale(cfg.normalReal);
   Q('inp-birth').value=cfg.birth;
   Q('inp-isk').value=fmtLocale(cfg.iskNom);
@@ -267,34 +312,34 @@ function initInputs(cfg){
   Q('sel-auto-peak').value=cfg.autoPeak;
   Q('sel-auto-sync').value=cfg.autoSync;
 
-  // Inflation
+  Q('inp-tjp').value=fmtLocale(cfg.tjpNom||0);
+  Q('inp-ppm').value=fmtLocale(cfg.ppmNom||0);
+  Q('inp-ink').value=fmtLocale(cfg.inkNom||0);
+  Q('sel-index-pensions').value=cfg.indexPensions||'off';
+
   Q('sel-infl-type').value=cfg.inflType;
   Q('sel-country').value=cfg.country||'ES';
   Q('inp-hicp-base').value=String(cfg.hicpBase).replace('.',',');
   Q('inp-hicp-manual').value=cfg.hicpManual||'';
 
-  // Guardrails
   Q('sel-profile').value=cfg.profile;
   Q('sel-bands-mode').value=cfg.bandsMode;
   ['m10','m20','m30','m40','m50'].forEach((id,i)=> Q(id).value=(cfg.customMul||[90,80,70,60,50])[i]);
 
-  // Softeners
   Q('sel-infl-pause').value=cfg.inflPause;
   Q('inp-max-chg').value=cfg.maxChangePct;
   Q('inp-floor').value=fmtLocale(cfg.floorReal||0);
 
-  // Remote & Hist
   Q('inp-remote-url').value=cfg.remoteUrl||''; Q('sel-remote-first').value=cfg.remoteFirst||'off';
   Q('inp-hist-start').value=cfg.histStartYM||'2025-08';
-}
-function readCurrency(id){ return parseCurrency(Q(id).value); }
 
-// ====== main
+  bindCurrencyFields();
+}
+
 async function main(){
   let cfg=load();
   initInputs(cfg);
 
-  // HICP fetch/show
   let hicpNow=null;
   if(cfg.inflType==='hicp'){
     const res=await fetchHICP(cfg.country||'ES');
@@ -306,11 +351,9 @@ async function main(){
 
   computeAndRender(cfg, hicpNow||cfg.hicpBase);
 
-  // Bind: export/import
-  Q('btn-export').onclick=()=>{ const blob=new Blob([JSON.stringify(load(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.download='uttags_config_v19.json'; a.href=URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href); };
+  Q('btn-export').onclick=()=>{ const blob=new Blob([JSON.stringify(load(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.download='uttags_config_v192.json'; a.href=URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href); };
   Q('file-import').addEventListener('change',e=>{ if(e.target.files&&e.target.files[0]){ const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); const merged=migrate({...load(),...obj}); save(merged); alert('Importerad. Uppdaterar…'); location.reload(); }catch{ alert('Ogiltig JSON.'); } }; rd.readAsText(e.target.files[0]); } });
 
-  // Set to Latest
   Q('btn-set-latest').onclick=async()=>{
     const typ=Q('sel-infl-type').value;
     if(typ==='hicp'){
@@ -319,8 +362,7 @@ async function main(){
       if(!res){ alert('Kunde inte hämta HICP.'); return; }
       const c=load(); c.hicpBase=res.value; c.country=cc; save(c);
       Q('inp-hicp-base').value=String(res.value).replace('.',',');
-      Q('hicp-latest').textContent=res.value.toFixed(2).replace('.',',');
-      Q('hicp-date').textContent=`Period: ${res.period}`;
+      Q('hicp-latest').textContent=res.value.toFixed(2).replace('.',','); Q('hicp-date').textContent=`Period: ${res.period}`;
       computeAndRender(c, res.value);
       alert('HICP-bas satt till senaste.');
     }else{
@@ -328,12 +370,10 @@ async function main(){
     }
   };
 
-  // Guardrails UI
   Q('sel-profile').onchange=()=>{ const c=load(); c.profile=Q('sel-profile').value; save(c); Q('custom-edit').hidden=(c.profile!=='custom'); computeAndRender(c, state.hicpLatest||c.hicpBase); };
   Q('sel-bands-mode').onchange=()=>{ const c=load(); c.bandsMode=Q('sel-bands-mode').value; save(c); computeAndRender(c, state.hicpLatest||c.hicpBase); };
   ['m10','m20','m30','m40','m50'].forEach((id,i)=> Q(id).addEventListener('change',()=>{ const c=load(); const vals=['m10','m20','m30','m40','m50'].map(id=> Number(Q(id).value)||0); c.customMul=vals; save(c); computeAndRender(c, state.hicpLatest||c.hicpBase); }));
 
-  // Save
   Q('btn-save').onclick=()=>{
     const c=load();
     c.normalReal=readCurrency('inp-normal');
@@ -343,6 +383,12 @@ async function main(){
     c.cadence=Q('sel-cadence').value;
     c.autoPeak=Q('sel-auto-peak').value;
     c.autoSync=Q('sel-auto-sync').value;
+
+    c.tjpNom=readCurrency('inp-tjp');
+    c.ppmNom=readCurrency('inp-ppm');
+    c.inkNom=readCurrency('inp-ink');
+    c.indexPensions=Q('sel-index-pensions').value;
+
     c.inflType=Q('sel-infl-type').value;
     c.country=Q('sel-country').value;
     c.hicpBase=parseCurrency(Q('inp-hicp-base').value.replace('.',','));
@@ -361,7 +407,6 @@ async function main(){
     alert('Sparat.');
   };
 
-  // Commit & Sync
   Q('btn-commit').onclick=()=>{
     const c=load();
     const days=(c.cadence==='q'?90:30);
@@ -380,107 +425,13 @@ async function main(){
     alert('Aktuell = Normal.');
   };
 
-  // Hist
   Q('btn-hist-update').onclick=()=>{ const c=load(); ensureHistoryAndMaybeAppend(c); drawHistory(c); alert('Historiken uppdaterad.'); };
   Q('btn-hist-clear').onclick=()=>{ if(!confirm('Töm historik?')) return; const c=load(); c.hist=[]; save(c); drawHistory(c); Q('hist-meta').textContent='—'; };
 
-  // Remote at start
   if(cfg.remoteFirst==='on' && cfg.remoteUrl){ try{ const r=await fetch(cfg.remoteUrl,{cache:'no-store'}); if(r.ok){ const obj=await r.json(); const merged=migrate({...cfg,...obj}); save(merged); initInputs(merged); computeAndRender(merged, state.hicpLatest||merged.hicpBase); } }catch{} }
+
+  if (window.__attachTooltips) window.__attachTooltips();
 }
 
 window.addEventListener('error', e=>{ const el=Q('err'); el.textContent='Fel: '+(e.message||'Okänt'); el.hidden=false; });
 document.addEventListener('DOMContentLoaded', main);
-/* === Tooltips — injicera (i)-ikoner + popup-bubblor === */
-(function(){
-  const TIPS = {
-    'inp-normal': 'Din månadskonsumtion i dagens priser. Vi bevarar köpkraften via HICP.',
-    'inp-isk': 'Portföljens aktuella värde i EUR (konverterat till EUR om nödvändigt).',
-    'inp-peak': 'Högsta uppmätta portföljvärde (ATH). Används för drawdown. Med Auto‑ATH uppdateras detta automatiskt.',
-    'sel-infl-type': 'HICP: hämtar senaste index automatiskt. Manuell: skriv in indexnivån själv.',
-    'sel-country': 'Land för HICP-serien (Eurostat/ECB).',
-    'inp-hicp-base': 'Din startnivå för index. “Set to Latest” sätter denna = senaste värde.',
-    'sel-profile': 'Hur snabbt du stramar åt i nedgång. Balanced bibehåller uttagskvoten; Aggressive sänker mer; Conservative sänker mindre.',
-    'sel-bands-mode': 'Bands = fasta steg (10/20/30/40/50 %). Linjär = mjuk kurva (t.ex. Balanced: 1 − d).',
-    'sel-auto-peak': 'På: uppdaterar ATH automatiskt när portföljen gör ny topp.',
-    'sel-auto-sync': 'På: styr tillbaka Aktuell nivå mot Normal när marknaden läker.',
-    'sel-infl-pause': 'Stoppa inflationshöjning om året var negativt realt eller WR över mål vid start.',
-    'inp-max-chg': 'Begränsa max steg upp/ner per avstämning (t.ex. ±10 %) för mjukare rörelser.',
-    'inp-floor': 'Lägsta reala månadsbelopp (t.ex. basboende + mat) – nivån går aldrig under detta.',
-    'inp-tjp': 'Tjänstepension, netto €/månad. Dras från ISK‑uttaget (nom).',
-    'inp-ppm': 'Premiepension, netto €/månad. Dras från ISK‑uttaget (nom).',
-    'inp-ink': 'Inkomstpension, netto €/månad. Dras från ISK‑uttaget (nom).',
-    'sel-index-pensions': 'På: pensioner behandlas som reala och indexeras med HICP före avdrag. Av: behandlas som nominella.',
-    'kpi-fr': 'Funding Ratio = ISK / nuvärde av din planerade konsumtion. ≥ 1,0 = planen är finansierad.',
-    'kpi-isk': 'Nominellt uttag från ISK efter avdrag för TJP + PPM + INK.'
-  };
-
-  let bubble;
-  function getBubble(){
-    if(!bubble){
-      bubble = document.createElement('div');
-      bubble.className = 'tip-bubble';
-      bubble.setAttribute('role','tooltip');
-      bubble.innerHTML = '<div class="tip-close"><button aria-label="Stäng">✕</button></div><div class="tip-txt"></div>';
-      document.body.appendChild(bubble);
-      bubble.querySelector('.tip-close button').addEventListener('click', hideTip);
-      window.addEventListener('scroll', hideTip, {passive:true});
-      window.addEventListener('resize', hideTip);
-      document.addEventListener('click', (e)=> {
-        if(!bubble.contains(e.target) && !e.target.classList.contains('tip-i')) hideTip();
-      });
-    }
-    return bubble;
-  }
-  function showTip(btn){
-    const b = getBubble();
-    b.querySelector('.tip-txt').textContent = btn.dataset.tip || '';
-    b.style.display = 'block';
-    // placera bubblan strax ovanför/vid sidan om knappen
-    const r = btn.getBoundingClientRect();
-    const x = Math.min(window.innerWidth - 20, r.left + (r.width/2) + 4);
-    const y = Math.max(12, r.top - 10);
-    b.style.left = `${x}px`;
-    b.style.top  = `${y}px`;
-  }
-  function hideTip(){ if(bubble) bubble.style.display = 'none'; }
-
-  function attachTip(el, text){
-    if(!el) return;
-    const host = el.closest('label') || el.parentElement || el;
-    // skapa (i)-ikon om det inte redan finns en
-    if(host.querySelector('.tip-i')) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'tip-i';
-    btn.setAttribute('aria-label','Mer information');
-    btn.textContent = 'i';
-    btn.dataset.tip = text;
-    // placera efter label‑texten (innan ev. input‑container)
-    if(host.firstChild && host.firstChild.nodeType === 3){ // textnod
-      host.insertBefore(btn, host.childNodes[1] || null);
-    } else {
-      host.appendChild(btn);
-    }
-    // hover (desktop)
-    btn.addEventListener('mouseenter', ()=> showTip(btn));
-    btn.addEventListener('mouseleave', hideTip);
-    // fokus/klik (mobil & tillgänglighet)
-    btn.addEventListener('focus', ()=> showTip(btn));
-    btn.addEventListener('blur', hideTip);
-    btn.addEventListener('click', (e)=> {
-      e.stopPropagation();
-      const visible = bubble && bubble.style.display === 'block';
-      if(visible) hideTip(); else showTip(btn);
-    });
-  }
-
-  // Kör efter att sidan laddats: injicera tooltips på kända id:n
-  window.__attachTooltips = function(){
-    Object.entries(TIPS).forEach(([id,txt])=>{
-      const el = document.getElementById(id);
-      if(el) attachTip(el, txt);
-    });
-  };
-})();
-  // sist i main():
-  if (window.__attachTooltips) window.__attachTooltips();

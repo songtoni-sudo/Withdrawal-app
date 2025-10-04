@@ -1,3 +1,4 @@
+
 :root{
   --text:#0f172a; --muted:#466079; --bg:#f7fbff;
   --az:#0aa2ff; --az2:#5bc3ff; --panel:rgba(255,255,255,.94); --border:rgba(6,148,240,.14);
@@ -28,7 +29,6 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .pill.ok{background:rgba(34,197,94,.12);color:#075f31;border-color:rgba(34,197,94,.28)}
 .pill.warn{background:rgba(245,158,11,.12);color:#7a4d00;border-color:rgba(245,158,11,.28)}
 .pill.danger{background:rgba(239,68,68,.12);color:#7a0e0e;border-color:rgba(239,68,68,.28)}
-.form label{display:block;margin:10px 0}
 .field{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.88);border:1px solid rgba(6,148,240,.18);border-radius:12px;padding:8px 10px}
 .field input{flex:1;background:transparent;border:none;outline:none;color:#0f172a}
 .suffix{color:#0b67a3;font-weight:800}
@@ -43,7 +43,7 @@ select,input[type="text"],input[type="url"],input[type="number"]{width:100%;back
 .hist-wrap{position:relative;margin-top:12px;border:1px solid rgba(6,148,240,.15);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.85))}
 #hist-canvas{width:100%;height:360px;display:block}
 .err{margin:12px 0;padding:12px;border-radius:12px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.06);color:#7a0e0e}
-pre.guide{white-space:pre-wrap;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:rgba(255,255,255,.75);padding:10px;border:1px solid rgba(6,148,240,.12);border-radius:12px}
+
 /* === Tooltips (Azure / iOS‑lik) === */
 .tip-i {
   display:inline-flex; align-items:center; justify-content:center;

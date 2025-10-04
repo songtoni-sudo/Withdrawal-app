@@ -1,673 +1,254 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Guardrails Withdrawal Planner v1.9.1</title>
-<meta name="description" content="Keep spending steady in today’s money, trim safely in downturns, and recover with the market — so savings last." />
-<style>
-:root{
-  --text:#0f172a; --muted:#466079; --bg:#f7fbff;
-  --az:#0aa2ff; --az2:#5bc3ff; --panel:rgba(255,255,255,.94); --border:rgba(6,148,240,.14);
-  --radius:18px; --shadow:0 10px 28px rgba(2,78,158,.12);
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Segoe UI,Roboto,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased}
-.wrap{max-width:1120px;margin:0 auto;padding:20px}
-.row{display:flex;align-items:center}.between{justify-content:space-between}
-.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}.mt8{margin-top:8px}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-.bg{position:fixed;inset:0;z-index:-3;background:
- radial-gradient(110% 60% at 50% 110%, rgba(90,205,255,.35), rgba(14,81,135,.05) 60%, transparent 75%),
- linear-gradient(180deg, rgba(140,215,255,.85) 0%, rgba(100,185,255,.60) 40%, rgba(55,120,210,.20) 100%);filter:brightness(1.22)}
-.appbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(14px);
- background:linear-gradient(180deg, rgba(255,255,255,.70), rgba(255,255,255,.30));border-bottom:1px solid rgba(6,148,240,.15)}
-.brand{font-weight:900}.brand-dot{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--az2), var(--az));box-shadow:0 0 0 3px rgba(10,162,255,.25),0 0 18px rgba(10,162,255,.45)}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(10,162,255,.08);border:1px solid rgba(10,162,255,.28);font-size:.8rem;color:#075985}
-.card{padding:16px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow)}
-.title{font-weight:800}.title-row{display:flex;justify-content:space-between;align-items:center}
-.hint{color:#5f7a94;font-size:.9rem}.small{font-size:.92rem}.tiny{font-size:.82rem}
-.btn{padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:800;background:linear-gradient(180deg,var(--az2),var(--az));border:none;color:#00324d;box-shadow:0 10px 24px rgba(10,162,255,.25)}
-.btn.ghost{background:rgba(255,255,255,.88);color:#0b3b6f;border:1px solid rgba(10,162,255,.25);box-shadow:none}
-.kpi .value{font-size:2.2rem;font-weight:900;letter-spacing:.3px;color:#0b3b6f}
-.pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:rgba(10,162,255,.10);border:1px solid rgba(10,162,255,.28);font-weight:800;color:#0b3b6f}
-.pill.ok{background:rgba(34,197,94,.12);color:#075f31;border-color:rgba(34,197,94,.28)}
-.pill.warn{background:rgba(245,158,11,.12);color:#7a4d00;border-color:rgba(245,158,11,.28)}
-.pill.danger{background:rgba(239,68,68,.12);color:#7a0e0e;border-color:rgba(239,68,68,.28)}
-.field{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.88);border:1px solid rgba(6,148,240,.18);border-radius:12px;padding:8px 10px}
-.field input{flex:1;background:transparent;border:none;outline:none;color:#0f172a}
-.suffix{color:#0b67a3;font-weight:800}
-select,input[type="text"],input[type="url"],input[type="number"]{width:100%;background:rgba(255,255,255,.88);border:1px solid rgba(6,148,240,.18);border-radius:12px;padding:10px 12px;color:#0f172a}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.hr{height:1px;background:rgba(6,148,240,.15);margin:12px 0}
-.tbl{width:100%;border-collapse:separate;border-spacing:0 6px}
-.tbl th{text-align:left;color:#0b3b6f;font-weight:800}
-.tbl td,.tbl th{padding:8px 10px}
-.tbl tbody tr{background:rgba(255,255,255,.88);border:1px solid rgba(6,148,240,.18)}
-.tbl tbody tr.sel{outline:2px solid #0aa2ff;border-radius:12px}
-.hist-wrap{position:relative;margin-top:12px;border:1px solid rgba(6,148,240,.15);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.85))}
-#hist-canvas{width:100%;height:360px;display:block}
-.err{margin:12px 0;padding:12px;border-radius:12px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.06);color:#7a0e0e}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guardrails Withdrawal Planner v1.9.2</title>
+  <meta name="description" content="Keep spending steady in today’s money, trim safely in downturns, and recover with the market — so savings last." />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-<div class="bg"></div>
-<header class="appbar">
-  <div class="wrap row between">
-    <div class="row g12">
-      <div class="brand-dot"></div>
-      <div>
-        <div class="brand">Guardrails Withdrawal Planner</div>
-        <div class="sub muted">Index‑All‑In · Guardrails · <span class="badge">v1.9.1</span></div>
-      </div>
-    </div>
-    <div class="row g8">
-      <button id="btn-export" class="btn ghost">Export (.json)</button>
-      <label class="btn ghost" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">Import
-        <input id="file-import" type="file" accept="application/json" hidden /></label>
-      <button id="btn-save" class="btn ghost">Spara</button>
-    </div>
-  </div>
-</header>
-
-<main class="wrap content">
-  <div id="err" class="err" hidden></div>
-
-  <section class="grid g16">
-    <div class="card kpi" style="grid-column: span 4;">
-      <div class="title">Månadens total (nom)</div>
-      <div class="value" id="kpi-total">—</div>
-      <div class="hint">= Föreslagen real × HICP‑faktor</div>
-    </div>
-    <div class="card kpi" style="grid-column: span 4;">
-      <div class="title">ISK‑uttag (nom)</div>
-      <div class="value" id="kpi-isk">—</div>
-      <div class="hint">Netto: Total − pensioner (TJP, PPM, INK)</div>
-    </div>
-    <div class="card kpi" style="grid-column: span 4;">
-      <div class="title">Status</div>
-      <div class="row g10">
-        <span id="badge" class="pill">—</span>
-        <span id="badge-txt" class="muted small">Ingen signal</span>
-      </div>
-      <div id="drawdown-line" class="tiny muted mt8"></div>
-    </div>
-  </section>
-
-  <section class="grid g16">
-    <div class="card" style="grid-column: span 7;">
-      <div class="title-row">
-        <div class="title">Dashboard – varje avstämning</div>
-        <span class="chip" id="kpi-phase">Fas —</span>
-      </div>
-      <div class="rows">
-        <div class="row between"><div class="muted">Aktuell real nivå</div><div class="mono strong" id="kpi-real-current">—</div></div>
-        <div class="row between"><div class="muted">Föreslagen real nivå</div><div class="mono strong" id="kpi-real-proposed">—</div></div>
-        <div class="row between"><div class="muted">Drawdown mot topp (ATH)</div><div class="mono" id="kpi-dd">—</div></div>
-        <div class="row between"><div class="muted">Funding ratio (FR)</div><div class="mono" id="kpi-fr">—</div></div>
-      </div>
-      <div class="hr"></div>
-      <div class="row g8">
-        <button id="btn-commit" class="btn">Verkställ ny nivå</button>
-        <button id="btn-sync" class="btn ghost">Synka ”Aktuell → Normal”</button>
-        <span class="hint" id="commit-hint">Cadens: Månadsvis · Du kan ändra nu.</span>
-      </div>
-    </div>
-
-    <div class="card" style="grid-column: span 5;">
-      <div class="title">Guardrails (multiplikatorer per band)</div>
-      <div class="row g8">
-        <label>Profil
-          <select id="sel-profile">
-            <option value="balanced">Balanced (rekommenderad)</option>
-            <option value="aggressive">Aggressive</option>
-            <option value="conservative">Conservative</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-        <label>Välj bandmodell
-          <select id="sel-bands-mode">
-            <option value="bands">Diskreta band</option>
-            <option value="linear">Linjär</option>
-          </select>
-        </label>
-      </div>
-      <table class="tbl">
-        <thead><tr><th>DD‑intervall</th><th>Multiplikator</th><th>Real nivå</th></tr></thead>
-        <tbody id="tbl-rails"></tbody>
-      </table>
-      <div id="custom-edit" class="mt8" hidden>
-        <div class="two">
-          <label>0–10 % <input id="m10" type="number" step="0.1" /></label>
-          <label>10–20 % <input id="m20" type="number" step="0.1" /></label>
+  <div class="bg"></div>
+  <header class="appbar">
+    <div class="wrap row between">
+      <div class="row g12">
+        <div class="brand-dot"></div>
+        <div>
+          <div class="brand">Guardrails Withdrawal Planner</div>
+          <div class="sub muted">Index‑All‑In · Guardrails · <span class="badge">v1.9.2</span></div>
         </div>
-        <div class="two">
-          <label>20–30 % <input id="m30" type="number" step="0.1" /></label>
-          <label>30–40 % <input id="m40" type="number" step="0.1" /></label>
+      </div>
+      <div class="row g8">
+        <button id="btn-export" class="btn ghost">Export (.json)</button>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">Import
+          <input id="file-import" type="file" accept="application/json" hidden /></label>
+        <button id="btn-save" class="btn ghost">Spara</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap content">
+    <div id="err" class="err" hidden></div>
+
+    <section class="grid g16">
+      <div class="card kpi" style="grid-column: span 4;">
+        <div class="title">Månadens total (nom)</div>
+        <div class="value" id="kpi-total">—</div>
+        <div class="hint">= Föreslagen real × HICP‑faktor</div>
+      </div>
+      <div class="card kpi" style="grid-column: span 4;">
+        <div class="title">ISK‑uttag (nom)</div>
+        <div class="value" id="kpi-isk">—</div>
+        <div class="hint">Netto: Total − pensioner (TJP, PPM, INK)</div>
+      </div>
+      <div class="card kpi" style="grid-column: span 4;">
+        <div class="title">Status</div>
+        <div class="row g10">
+          <span id="badge" class="pill">—</span>
+          <span id="badge-txt" class="muted small">Ingen signal</span>
         </div>
+        <div id="drawdown-line" class="tiny muted mt8"></div>
+      </div>
+    </section>
+
+    <section class="grid g16">
+      <div class="card" style="grid-column: span 7;">
+        <div class="title-row">
+          <div class="title">Dashboard – varje avstämning</div>
+          <span class="chip" id="kpi-phase">Fas —</span>
+        </div>
+        <div class="rows">
+          <div class="row between"><div class="muted">Aktuell real nivå</div><div class="mono strong" id="kpi-real-current">—</div></div>
+          <div class="row between"><div class="muted">Föreslagen real nivå</div><div class="mono strong" id="kpi-real-proposed">—</div></div>
+          <div class="row between"><div class="muted">Drawdown mot topp (ATH)</div><div class="mono" id="kpi-dd">—</div></div>
+          <div class="row between"><div class="muted">Funding ratio (FR)</div><div class="mono" id="kpi-fr">—</div></div>
+        </div>
+        <div class="hr"></div>
+        <div class="row g8">
+          <button id="btn-commit" class="btn">Verkställ ny nivå</button>
+          <button id="btn-sync" class="btn ghost">Synka ”Aktuell → Normal”</button>
+          <span class="hint" id="commit-hint">Cadens: Månadsvis · Du kan ändra nu.</span>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: span 5;">
+        <div class="title">Guardrails (multiplikatorer per band)</div>
+        <div class="row g8">
+          <label>Profil
+            <select id="sel-profile">
+              <option value="balanced">Balanced (rekommenderad)</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="conservative">Conservative</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label>Välj bandmodell
+            <select id="sel-bands-mode">
+              <option value="bands">Diskreta band</option>
+              <option value="linear">Linjär</option>
+            </select>
+          </label>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>DD‑intervall</th><th>Multiplikator</th><th>Real nivå</th></tr></thead>
+          <tbody id="tbl-rails"></tbody>
+        </table>
+        <div id="custom-edit" class="mt8" hidden>
+          <div class="two">
+            <label>0–10 % <input id="m10" type="number" step="0.1" /></label>
+            <label>10–20 % <input id="m20" type="number" step="0.1" /></label>
+          </div>
+          <div class="two">
+            <label>20–30 % <input id="m30" type="number" step="0.1" /></label>
+            <label>30–40 % <input id="m40" type="number" step="0.1" /></label>
+          </div>
+          <div class="two">
+            <label>40–50 % <input id="m50" type="number" step="0.1" /></label>
+            <label>—</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid g16">
+      <div class="card" style="grid-column: span 7;">
+        <div class="title">Inställningar (set once)</div>
         <div class="two">
-          <label>40–50 % <input id="m50" type="number" step="0.1" /></label>
+          <label>Normal (realt)
+            <div class="field"><input id="inp-normal" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div>
+          </label>
+          <label>Födelsedatum (YYYY‑MM‑DD) <input id="inp-birth" type="text" placeholder="1976-01-01" /></label>
+        </div>
+
+        <div class="two">
+          <label>Portfölj nu (ISK, €) <div class="field"><input id="inp-isk" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+          <label>Portfölj högsta (ATH, €) <div class="field"><input id="inp-peak" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+        </div>
+
+        <div class="two">
+          <label>Review cadence
+            <select id="sel-cadence"><option value="m">Monthly (default)</option><option value="q">Quarterly</option></select>
+          </label>
+          <label>Auto‑ATH
+            <select id="sel-auto-peak"><option value="on">På</option><option value="off">Av</option></select>
+          </label>
+        </div>
+
+        <div class="two">
+          <label>Auto‑apply ”Normal”
+            <select id="sel-auto-sync"><option value="off">Av</option><option value="on">På</option></select>
+          </label>
           <label>—</label>
         </div>
-      </div>
-    </div>
-  </section>
 
-  <section class="grid g16">
-    <div class="card" style="grid-column: span 7;">
-      <div class="title">Inställningar (set once)</div>
-      <div class="two">
-        <label>Normal (realt)
-          <div class="field"><input id="inp-normal" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div>
-        </label>
-        <label>Födelsedatum (YYYY‑MM‑DD) <input id="inp-birth" type="text" placeholder="1976-01-01" /></label>
-      </div>
-
-      <div class="two">
-        <label>Portfölj nu (ISK, €) <div class="field"><input id="inp-isk" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
-        <label>Portfölj högsta (ATH, €) <div class="field"><input id="inp-peak" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
-      </div>
-
-      <div class="two">
-        <label>Review cadence
-          <select id="sel-cadence"><option value="m">Monthly (default)</option><option value="q">Quarterly</option></select>
-        </label>
-        <label>Auto‑ATH
-          <select id="sel-auto-peak"><option value="on">På</option><option value="off">Av</option></select>
-        </label>
-      </div>
-
-      <div class="two">
-        <label>Auto‑apply ”Normal”
-          <select id="sel-auto-sync"><option value="off">Av</option><option value="on">På</option></select>
-        </label>
-        <label>—</label>
-      </div>
-
-      <div class="hr"></div>
-      <div class="title small">Pensioner (€/mån, netto)</div>
-      <div class="two">
-        <label>TJP netto (€/mån) <div class="field"><input id="inp-tjp" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
-        <label>PPM netto (€/mån) <div class="field"><input id="inp-ppm" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
-      </div>
-      <div class="two">
-        <label>INK netto (€/mån) <div class="field"><input id="inp-ink" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
-        <label>Indexera pensioner med HICP
-          <select id="sel-index-pensions"><option value="off">Av (nominala)</option><option value="on">På (reala → indexeras)</option></select>
-        </label>
-      </div>
-
-      <div class="hr"></div>
-      <div class="title small">Inflation index</div>
-      <div class="two">
-        <label>Typ
-          <select id="sel-infl-type">
-            <option value="hicp">HICP (EU, auto)</option>
-            <option value="manual">Manual (CPI/HICP)</option>
-          </select>
-        </label>
-        <label>Land (HICP)
-          <select id="sel-country">
-            <option value="ES">Spain</option>
-            <option value="SE">Sweden</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-            <option value="IT">Italy</option>
-            <option value="NL">Netherlands</option>
-            <option value="PT">Portugal</option>
-            <option value="IE">Ireland</option>
-            <option value="BE">Belgium</option>
-            <option value="FI">Finland</option>
-            <option value="AT">Austria</option>
-            <option value="GR">Greece</option>
-            <option value="DK">Denmark</option>
-            <option value="NO">Norway</option>
-            <option value="PL">Poland</option>
-            <option value="CZ">Czechia</option>
-            <option value="HU">Hungary</option>
-            <option value="RO">Romania</option>
-            <option value="BG">Bulgaria</option>
-            <option value="HR">Croatia</option>
-            <option value="EE">Estonia</option>
-            <option value="LV">Latvia</option>
-            <option value="LT">Lithuania</option>
-            <option value="LU">Luxembourg</option>
-            <option value="SI">Slovenia</option>
-            <option value="SK">Slovakia</option>
-          </select>
-        </label>
-      </div>
-      <div class="row g8">
-        <button id="btn-set-latest" class="btn ghost">Set to Latest</button>
-        <div class="row g8">
-          <span class="chip ghost" id="hicp-latest">—</span>
-          <span class="chip ghost" id="hicp-date">—</span>
+        <div class="hr"></div>
+        <div class="title small">Pensioner (€/mån, netto)</div>
+        <div class="two">
+          <label>TJP netto (€/mån) <div class="field"><input id="inp-tjp" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+          <label>PPM netto (€/mån) <div class="field"><input id="inp-ppm" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
         </div>
-      </div>
-      <div class="two mt8">
-        <label>Manuell indexnivå <input id="inp-hicp-manual" type="text" inputmode="decimal" placeholder="t.ex. 126,88" /></label>
-        <label>HICP‑bas (din startnivå) <input id="inp-hicp-base" type="text" inputmode="decimal" placeholder="sätts = Senast"></label>
-      </div>
-
-      <div class="hr"></div>
-      <div class="two">
-        <label>Remote Config URL (JSON) <input id="inp-remote-url" type="url" placeholder="https://..." /></label>
-        <label>Ladda Remote vid start <select id="sel-remote-first"><option value="off">Av</option><option value="on">På</option></select></label>
-      </div>
-    </div>
-
-    <div class="card" style="grid-column: span 5;">
-      <div class="title">Softeners (komfort)</div>
-      <div class="two">
-        <label>Inflation pause <select id="sel-infl-pause"><option value="on">På</option><option value="off">Av</option></select></label>
-        <label>Max change per review (±%) <input id="inp-max-chg" type="number" step="1" min="0" max="100" value="10" /></label>
-      </div>
-      <div class="two">
-        <label>Spending floor (realt €/mån) <input id="inp-floor" class="currency" type="text" inputmode="decimal" placeholder="0" /></label>
-        <label>—</label>
-      </div>
-      <div class="hint small">”Inflation pause” stoppar höjning om året var negativt realt eller WR över mål vid start.</div>
-
-      <div class="hr"></div>
-      <div class="title small">HICP / CPI (snabbguide)</div>
-      <p class="small">Vi använder officiellt index för att hålla köpkraften konstant. ”Set to Latest” sätter din bas till senaste värde så att dagens ”Normal (realt)” motsvarar dagens priser.</p>
-    </div>
-  </section>
-
-  <section class="grid g16">
-    <div class="card" style="grid-column: span 12;">
-      <div class="title">Historik (månadsvis) – ISK & Portfölj högsta</div>
-      <div class="row between mt8">
-        <div class="row g8">
-          <label>Startmånad (YYYY‑MM)
-            <input id="inp-hist-start" type="text" placeholder="2025-08" style="min-width:120px" />
+        <div class="two">
+          <label>INK netto (€/mån) <div class="field"><input id="inp-ink" class="currency" type="text" inputmode="decimal" /><span class="suffix">€</span></div></label>
+          <label>Indexera pensioner med HICP
+            <select id="sel-index-pensions"><option value="off">Av (nominala)</option><option value="on">På (reala → indexeras)</option></select>
           </label>
-          <button id="btn-hist-update" class="btn ghost">Uppdatera historik nu</button>
-          <button id="btn-hist-clear" class="btn ghost">Töm historik</button>
         </div>
-        <div class="row g8"><span class="chip ghost" id="hist-meta">—</span></div>
+
+        <div class="hr"></div>
+        <div class="title small">Inflation index</div>
+        <div class="two">
+          <label>Typ
+            <select id="sel-infl-type">
+              <option value="hicp">HICP (EU, auto)</option>
+              <option value="manual">Manual (CPI/HICP)</option>
+            </select>
+          </label>
+          <label>Land (HICP)
+            <select id="sel-country">
+              <option value="ES">Spain</option>
+              <option value="SE">Sweden</option>
+              <option value="DE">Germany</option>
+              <option value="FR">France</option>
+              <option value="IT">Italy</option>
+              <option value="NL">Netherlands</option>
+              <option value="PT">Portugal</option>
+              <option value="IE">Ireland</option>
+              <option value="BE">Belgium</option>
+              <option value="FI">Finland</option>
+              <option value="AT">Austria</option>
+              <option value="GR">Greece</option>
+              <option value="DK">Denmark</option>
+              <option value="NO">Norway</option>
+              <option value="PL">Poland</option>
+              <option value="CZ">Czechia</option>
+              <option value="HU">Hungary</option>
+              <option value="RO">Romania</option>
+              <option value="BG">Bulgaria</option>
+              <option value="HR">Croatia</option>
+              <option value="EE">Estonia</option>
+              <option value="LV">Latvia</option>
+              <option value="LT">Lithuania</option>
+              <option value="LU">Luxembourg</option>
+              <option value="SI">Slovenia</option>
+              <option value="SK">Slovakia</option>
+            </select>
+          </label>
+        </div>
+        <div class="row g8">
+          <button id="btn-set-latest" class="btn ghost">Set to Latest</button>
+          <div class="row g8">
+            <span class="chip ghost" id="hicp-latest">—</span>
+            <span class="chip ghost" id="hicp-date">—</span>
+          </div>
+        </div>
+        <div class="two mt8">
+          <label>Manuell indexnivå <input id="inp-hicp-manual" type="text" inputmode="decimal" placeholder="t.ex. 126,88" /></label>
+          <label>HICP‑bas (din startnivå) <input id="inp-hicp-base" type="text" inputmode="decimal" placeholder="sätts = Senast"></label>
+        </div>
+
+        <div class="hr"></div>
+        <div class="two">
+          <label>Remote Config URL (JSON) <input id="inp-remote-url" type="url" placeholder="https://..." /></label>
+          <label>Ladda Remote vid start <select id="sel-remote-first"><option value="off">Av</option><option value="on">På</option></select></label>
+        </div>
       </div>
-      <div class="hist-wrap"><canvas id="hist-canvas" width="1024" height="360"></canvas></div>
-    </div>
-  </section>
-</main>
 
-<script>
-// v1.9.1 — Thousand-separators + pensions back
-const KEY='uttags_config_v191';
-const state={ hicpLatest:null, hicpPeriod:'', proposedReal:null };
+      <div class="card" style="grid-column: span 5;">
+        <div class="title">Softeners (komfort)</div>
+        <div class="two">
+          <label>Inflation pause <select id="sel-infl-pause"><option value="on">På</option><option value="off">Av</option></select></label>
+          <label>Max change per review (±%) <input id="inp-max-chg" type="number" step="1" min="0" max="100" value="10" /></label>
+        </div>
+        <div class="two">
+          <label>Spending floor (realt €/mån) <input id="inp-floor" class="currency" type="text" inputmode="decimal" placeholder="0" /></label>
+          <label>—</label>
+        </div>
+        <div class="hint small">”Inflation pause” stoppar höjning om året var negativt realt eller WR över mål vid start.</div>
 
-const fmtLocale = (v,d=0)=> isFinite(v)? new Intl.NumberFormat(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):'—';
-const fmtEUR = (v,d=0)=> isFinite(v)? `${fmtLocale(v,d)} €`:'—';
-const fmtPct = (x,d=1)=> `${(x*100).toFixed(d).replace('.',',')} %`;
+        <div class="hr"></div>
+        <div class="title small">HICP / CPI (snabbguide)</div>
+        <p class="small">Vi använder officiellt index för att hålla köpkraften konstant. ”Set to Latest” sätter din bas till senaste värde så att dagens ”Normal (realt)” motsvarar dagens priser.</p>
+      </div>
+    </section>
 
-function parseCurrency(s){
-  if(typeof s!=='string') return Number(s)||0;
-  s=s.trim();
-  if(!s) return 0;
-  s=s.replace(/\s+/g,'');
-  if(/,\d{1,2}$/.test(s) && s.indexOf('.')>=0){
-    s=s.replace(/\./g,'').replace(',','.');
-    return Number(s)||0;
-  }
-  if(/,/.test(s) && !/\.\d{1,2}$/.test(s)){
-    s=s.replace(/\./g,'').replace(',','.');
-    return Number(s)||0;
-  }
-  s=s.replace(/,/g,'');
-  return Number(s)||0;
-}
-const Q=id=>document.getElementById(id);
+    <section class="grid g16">
+      <div class="card" style="grid-column: span 12;">
+        <div class="title">Historik (månadsvis) – ISK & Portfölj högsta</div>
+        <div class="row between mt8">
+          <div class="row g8">
+            <label>Startmånad (YYYY‑MM)
+              <input id="inp-hist-start" type="text" placeholder="2025-08" style="min-width:120px" />
+            </label>
+            <button id="btn-hist-update" class="btn ghost">Uppdatera historik nu</button>
+            <button id="btn-hist-clear" class="btn ghost">Töm historik</button>
+          </div>
+          <div class="row g8"><span class="chip ghost" id="hist-meta">—</span></div>
+        </div>
+        <div class="hist-wrap"><canvas id="hist-canvas" width="1024" height="360"></canvas></div>
+      </div>
+    </section>
+  </main>
 
-function def(){ return {
-  normalReal:6600, currentReal:6600,
-  iskNom:0, peakNom:0, birth:'1976-01-01',
-  cadence:'m', autoPeak:'on', autoSync:'off',
-  inflType:'hicp', country:'ES', hicpBase:126.88, hicpManual:'',
-  profile:'balanced', bandsMode:'bands',
-  customMul:[90,80,70,60,50],
-  inflPause:'on', maxChangePct:10, floorReal:0,
-  remoteUrl:'', remoteFirst:'off',
-  histStartYM:'2025-08', hist:[],
-  wrTarget:null, lastChangeTs:'', lastRealLevel:6600,
-  tjpNom:0, ppmNom:0, inkNom:0, indexPensions:'off'
-};}
-function migrate(cfg){ const d=def(); return {...d, ...(cfg||{})}; }
-function load(){ try{ return migrate(JSON.parse(localStorage.getItem(KEY)||'null')); }catch{ return def(); } }
-function save(c){ localStorage.setItem(KEY, JSON.stringify(c)); }
-
-// HICP via ECB SDMX proxy
-async function fetchHICP(country='ES'){
-  try{
-    const q=encodeURIComponent(`https://sdw-wsrest.ecb.europa.eu/service/data/ICP/M.${country}.N.000000.4.INX?lastNObservations=36&detail=dataonly&format=jsondata`);
-    const url=`https://api.allorigins.win/raw?url=${q}`;
-    const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw 0;
-    const d=await r.json();
-    const obsDim=(d.structure.dimensions.observation||[])[0]; const times=(obsDim&&obsDim.values)?obsDim.values:[];
-    const seriesKey=Object.keys(d.dataSets[0].series)[0]; const obs=d.dataSets[0].series[seriesKey].observations;
-    const idxs=Object.keys(obs).map(k=>parseInt(k,10)).sort((a,b)=>a-b); const lastIdx=idxs[idxs.length-1];
-    const val=Number(obs[lastIdx][0]); const period=(times[lastIdx]&&(times[lastIdx].id||times[lastIdx].name))||'';
-    return {value:val, period};
-  }catch(e){ return null; }
-}
-
-const guardrailIndex = dd => dd<0.10?0 : dd<0.20?1 : dd<0.30?2 : dd<0.40?3 : 4;
-function profileBands(p){
-  if(p==='aggressive') return [87.5,75,62.5,50,40];
-  if(p==='conservative') return [92.5,85,77.5,70,65];
-  return [90,80,70,60,50];
-}
-function linearMultiplier(p, d){
-  if(p==='aggressive'){ const m=1-1.25*d; return Math.max(m,0.40); }
-  if(p==='conservative'){ return 1-0.75*d; }
-  return 1-d;
-}
-function multiplierFrom(cfg, dd){
-  if(cfg.profile==='custom'){ const arr=cfg.customMul||[90,80,70,60,50]; return (arr[guardrailIndex(dd)]||50)/100; }
-  if(cfg.bandsMode==='linear') return linearMultiplier(cfg.profile, dd);
-  return profileBands(cfg.profile)[guardrailIndex(dd)]/100;
-}
-function AF(n,rm){ return rm<=0? n : (1-Math.pow(1+rm,-n))/rm; }
-function computeFR(cfg, realMonthly){
-  const now=new Date(); const [Y,M,D]=cfg.birth.split('-').map(Number); const b=new Date(Y,M-1,D);
-  const age=(now-b)/(365.2425*24*3600*1000); const mLeft=Math.max(0, Math.round((90-age)*12));
-  const rm=Math.pow(1+0.047,1/12)-1;
-  const PV_need=realMonthly*AF(mLeft,rm);
-  const PV=cfg.iskNom;
-  return {FR: PV_need>0? PV/PV_need:0};
-}
-function withdrawalRate(monthly, portfolioNow){ return portfolioNow>0? (12*monthly)/portfolioNow : Infinity; }
-
-function ymOfClosedMonth(d=new Date()){ const dt=new Date(d.getFullYear(), d.getMonth(), 1); dt.setMonth(dt.getMonth()-1); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; }
-function ymToDate(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1); }
-function ensureHistoryAndMaybeAppend(cfg){
-  if(!cfg.histStartYM) cfg.histStartYM='2025-08';
-  if(!Array.isArray(cfg.hist)) cfg.hist=[];
-  const closed=ymOfClosedMonth(); const start=cfg.histStartYM;
-  if(ymToDate(closed) < ymToDate(start)) return;
-  if(!cfg.hist.length){ cfg.hist.push({ym:start, isk:cfg.iskNom, peak:cfg.peakNom}); }
-  if(cfg.hist[cfg.hist.length-1].ym !== closed){
-    let cur=ymToDate(cfg.hist[cfg.hist.length-1].ym);
-    while(true){
-      cur.setMonth(cur.getMonth()+1);
-      const ym=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
-      if(ym>closed) break;
-      cfg.hist.push({ym, isk:cfg.iskNom, peak:cfg.peakNom});
-      if(ym===closed) break;
-    }
-  }else{
-    const p=cfg.hist[cfg.hist.length-1]; p.isk=cfg.iskNom; p.peak=cfg.peakNom;
-  }
-  save(cfg);
-  const meta = cfg.hist.length? `${cfg.hist[0].ym} → ${cfg.hist[cfg.hist.length-1].ym} · ${cfg.hist.length} mån` : '—';
-  Q('hist-meta').textContent=meta;
-}
-function drawHistory(cfg){
-  const cvs=Q('hist-canvas'); const ctx=cvs.getContext('2d');
-  const dpr=window.devicePixelRatio||1; const W=cvs.clientWidth*dpr,H=cvs.clientHeight*dpr;
-  if(cvs.width!==W) cvs.width=W; if(cvs.height!==H) cvs.height=H;
-  ctx.clearRect(0,0,W,H);
-  const padL=80*dpr,padR=20*dpr,padT=26*dpr,padB=36*dpr;
-  const data=cfg.hist||[]; if(!data.length){ ctx.fillStyle='#5f7a94'; ctx.font=`${12*dpr}px -apple-system,Segoe UI,Roboto`; ctx.fillText('Ingen historik ännu.',16*dpr,24*dpr); return; }
-  const xs=data.map(d=>d.ym); const ys1=data.map(d=>d.isk||0), ys2=data.map(d=>d.peak||0);
-  const yMax=Math.max(1, Math.max(...ys1,...ys2)); const yMin=0;
-  ctx.strokeStyle='rgba(6,148,240,.15)'; ctx.lineWidth=1*dpr;
-  for(let i=0;i<=5;i++){ const y=padT+(H-padT-padB)*i/5; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); }
-  ctx.strokeStyle='rgba(6,148,240,.40)'; ctx.lineWidth=1.5*dpr; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
-  ctx.fillStyle='#0b3b6f'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font=`${12*dpr}px -apple-system,Segoe UI,Roboto`;
-  for(let i=0;i<=5;i++){ const val=yMax - (yMax-yMin)*i/5; const y=padT+(H-padT-padB)*i/5; ctx.fillText(fmtLocale(Math.round(val)), padL-8*dpr, y); }
-  ctx.fillStyle='#466079'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  const n=xs.length, w=(W-padL-padR)/Math.max(1,n-1); for(let i=0;i<n;i++){ const x=padL+w*i; const y=H-padB+16*dpr; ctx.fillText(xs[i],x,y); }
-  function plot(ys,color){ ctx.strokeStyle=color; ctx.lineWidth=2.5*dpr; ctx.beginPath();
-    ys.forEach((v,i)=>{ const x=padL+w*i; const y=padT+(H-padT-padB)*(1-(v-yMin)/(yMax-yMin)); if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
-    ctx.stroke(); }
-  plot(ys2,'#0b3b6f'); plot(ys1,'#0aa2ff');
-}
-
-// Currency inputs
-function formatCurrencyInput(el){
-  const show=()=>{ const n=parseCurrency(el.value); el.value = n? new Intl.NumberFormat(undefined).format(n): ''; };
-  el.addEventListener('blur', show);
-  show();
-}
-function bindCurrencyFields(){
-  ['inp-normal','inp-isk','inp-peak','inp-floor','inp-tjp','inp-ppm','inp-ink'].forEach(id=>{
-    const el=Q(id); if(el) formatCurrencyInput(el);
-  });
-}
-function readCurrency(id){ return parseCurrency(Q(id).value); }
-
-// Core compute & render
-function computeAndRender(cfg, hicpNow){
-  if(cfg.autoPeak==='on' && cfg.iskNom>cfg.peakNom){ cfg.peakNom=cfg.iskNom; save(cfg); }
-  const dd = (cfg.peakNom>0)? Math.max(0, 1 - cfg.iskNom/cfg.peakNom): 0;
-  const {FR}=computeFR(cfg, cfg.currentReal);
-
-  let H = 1;
-  if(cfg.inflType==='hicp'){
-    const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
-    H = (hicpNow||base)/base;
-  }else{
-    const man=Number((Q('inp-hicp-manual').value||'').replace(',','.'));
-    const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
-    H = isFinite(man)&&man>0? man/base : 1;
-  }
-
-  const m = multiplierFrom(cfg, dd);
-  let proposed = (cfg.normalReal||0) * m;
-
-  if(cfg.inflPause==='on'){
-    let negativeRealYear=false;
-    if(cfg.hist && cfg.hist.length>=12){
-      const nowISK = cfg.iskNom;
-      const thenISK = cfg.hist[cfg.hist.length-12].isk||0;
-      negativeRealYear = nowISK < thenISK;
-    }
-    if(!cfg.wrTarget && cfg.peakNom>0){ cfg.wrTarget = withdrawalRate(cfg.normalReal, cfg.peakNom); save(cfg); }
-    const wrNow = withdrawalRate(proposed, cfg.iskNom);
-    if(negativeRealYear || (cfg.wrTarget && wrNow > cfg.wrTarget)){
-      proposed = Math.min(proposed, cfg.lastRealLevel||cfg.currentReal);
-    }
-  }
-  const maxPct = (cfg.maxChangePct||0)/100;
-  if(maxPct>0 && (cfg.lastRealLevel||cfg.currentReal)>0){
-    const lo = (cfg.lastRealLevel||cfg.currentReal)*(1 - maxPct);
-    const hi = (cfg.lastRealLevel||cfg.currentReal)*(1 + maxPct);
-    proposed = Math.max(lo, Math.min(hi, proposed));
-  }
-  if((cfg.floorReal||0)>0) proposed = Math.max(proposed, cfg.floorReal);
-
-  state.proposedReal = Math.round(proposed);
-
-  const totalNom = state.proposedReal * H;
-  const tjp = (cfg.indexPensions==='on') ? cfg.tjpNom * H : cfg.tjpNom;
-  const ppm = (cfg.indexPensions==='on') ? cfg.ppmNom * H : cfg.ppmNom;
-  const ink = (cfg.indexPensions==='on') ? cfg.inkNom * H : cfg.inkNom;
-  const pensionsNom = (tjp||0)+(ppm||0)+(ink||0);
-  const restNom = Math.max(0, totalNom - pensionsNom);
-
-  Q('kpi-phase').textContent = `Fas ${phaseFromBirth(cfg.birth)}`;
-  Q('kpi-real-current').textContent = fmtEUR(cfg.currentReal);
-  Q('kpi-real-proposed').textContent = fmtEUR(state.proposedReal);
-  Q('kpi-dd').textContent = fmtPct(dd,1);
-  Q('kpi-fr').textContent = (FR>=1?'≥ ':'') + (FR.toFixed(2).replace('.',','));
-  Q('kpi-total').textContent = fmtEUR(totalNom);
-  Q('kpi-isk').textContent = fmtEUR(restNom);
-
-  let badge='pill ok', msg='Planen är finansierad. Håll nivå.';
-  if(FR<1.0){ badge='pill warn'; msg='FR < 1,0: justera enligt förslaget.'; }
-  if(dd>=0.3){ badge='pill danger'; msg='Stor drawdown: tillämpa nedskalning.'; }
-  const bEl=Q('badge'); bEl.className=badge; bEl.textContent=({'pill ok':'Grön','pill warn':'Gul','pill danger':'Röd'})[badge]||'—';
-  Q('badge-txt').textContent = msg;
-  Q('drawdown-line').textContent = `Drawdown: ${fmtPct(dd,1)} | ISK: ${fmtEUR(cfg.iskNom)} | ATH: ${fmtEUR(cfg.peakNom)} | Pensioner: ${fmtEUR(pensionsNom)}`;
-
-  renderRails(cfg, dd);
-
-  const days=(cfg.cadence==='q'?90:30);
-  const canChange=(!cfg.lastChangeTs)||((new Date()-new Date(cfg.lastChangeTs))/(24*3600*1000)>=days);
-  Q('commit-hint').textContent = `Cadens: ${cfg.cadence==='q'?'Kvartal (≥90 d)':'Månadsvis (≥30 d)'} · ${canChange?'Du kan ändra nu.':'Vänta tills viloperioden passerat.'}`;
-  Q('btn-commit').disabled=!canChange;
-
-  ensureHistoryAndMaybeAppend(cfg); drawHistory(cfg);
-}
-function phaseFromBirth(birth){
-  const [Y,M,D]=birth.split('-').map(Number); const b=new Date(Y||1976,(M||1)-1,D||1);
-  const age=(new Date()-b)/(365.2425*24*3600*1000);
-  return (age<55)?1:(age<65)?2:3;
-}
-function renderRails(cfg, dd){
-  const tb=Q('tbl-rails'); tb.innerHTML='';
-  const labels=['0–10 %','10–20 %','20–30 %','30–40 %','40–50 %'];
-  let arr=[];
-  if(cfg.profile==='custom'){ arr=cfg.customMul; }
-  else if(cfg.bandsMode==='linear'){
-    const points=[0.10,0.20,0.30,0.40,0.50];
-    arr = points.map(p=>Math.round(linearMultiplier(cfg.profile, p)*1000)/10);
-  }else{
-    arr = profileBands(cfg.profile);
-  }
-  const idx=guardrailIndex(dd);
-  arr.forEach((v,i)=>{
-    const tr=document.createElement('tr'); if(i===idx) tr.className='sel';
-    const real = Math.round((cfg.normalReal||0)*(v/100));
-    tr.innerHTML=`<td>${labels[i]}</td><td class="mono">${v.toString().replace('.',',')} %</td><td class="mono">${fmtEUR(real)}</td>`;
-    tb.appendChild(tr);
-  });
-}
-
-function initInputs(cfg){
-  Q('inp-normal').value=fmtLocale(cfg.normalReal);
-  Q('inp-birth').value=cfg.birth;
-  Q('inp-isk').value=fmtLocale(cfg.iskNom);
-  Q('inp-peak').value=fmtLocale(cfg.peakNom);
-  Q('sel-cadence').value=cfg.cadence;
-  Q('sel-auto-peak').value=cfg.autoPeak;
-  Q('sel-auto-sync').value=cfg.autoSync;
-
-  Q('inp-tjp').value=fmtLocale(cfg.tjpNom||0);
-  Q('inp-ppm').value=fmtLocale(cfg.ppmNom||0);
-  Q('inp-ink').value=fmtLocale(cfg.inkNom||0);
-  Q('sel-index-pensions').value=cfg.indexPensions||'off';
-
-  Q('sel-infl-type').value=cfg.inflType;
-  Q('sel-country').value=cfg.country||'ES';
-  Q('inp-hicp-base').value=String(cfg.hicpBase).replace('.',',');
-  Q('inp-hicp-manual').value=cfg.hicpManual||'';
-
-  Q('sel-profile').value=cfg.profile;
-  Q('sel-bands-mode').value=cfg.bandsMode;
-  ['m10','m20','m30','m40','m50'].forEach((id,i)=> Q(id).value=(cfg.customMul||[90,80,70,60,50])[i]);
-
-  Q('sel-infl-pause').value=cfg.inflPause;
-  Q('inp-max-chg').value=cfg.maxChangePct;
-  Q('inp-floor').value=fmtLocale(cfg.floorReal||0);
-
-  Q('inp-remote-url').value=cfg.remoteUrl||''; Q('sel-remote-first').value=cfg.remoteFirst||'off';
-  Q('inp-hist-start').value=cfg.histStartYM||'2025-08';
-
-  bindCurrencyFields();
-}
-
-async function main(){
-  let cfg=load();
-  initInputs(cfg);
-
-  let hicpNow=null;
-  if(cfg.inflType==='hicp'){
-    const res=await fetchHICP(cfg.country||'ES');
-    if(res){ state.hicpLatest=res.value; state.hicpPeriod=res.period; Q('hicp-latest').textContent=`${res.value.toFixed(2).replace('.',',')}`; Q('hicp-date').textContent=`Period: ${res.period}`; hicpNow=res.value; }
-    else { Q('hicp-latest').textContent='—'; Q('hicp-date').textContent='—'; }
-  }else{
-    const man=Number((Q('inp-hicp-manual').value||'').replace(',','.')); if(isFinite(man)&&man>0){ hicpNow=man; Q('hicp-latest').textContent=man.toFixed(2).replace('.',','); Q('hicp-date').textContent='Manual'; }
-  }
-
-  computeAndRender(cfg, hicpNow||cfg.hicpBase);
-
-  Q('btn-export').onclick=()=>{ const blob=new Blob([JSON.stringify(load(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.download='uttags_config_v191.json'; a.href=URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href); };
-  Q('file-import').addEventListener('change',e=>{ if(e.target.files&&e.target.files[0]){ const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); const merged=migrate({...load(),...obj}); save(merged); alert('Importerad. Uppdaterar…'); location.reload(); }catch{ alert('Ogiltig JSON.'); } }; rd.readAsText(e.target.files[0]); } });
-
-  Q('btn-set-latest').onclick=async()=>{
-    const typ=Q('sel-infl-type').value;
-    if(typ==='hicp'){
-      const cc=Q('sel-country').value;
-      const res=await fetchHICP(cc);
-      if(!res){ alert('Kunde inte hämta HICP.'); return; }
-      const c=load(); c.hicpBase=res.value; c.country=cc; save(c);
-      Q('inp-hicp-base').value=String(res.value).replace('.',',');
-      Q('hicp-latest').textContent=res.value.toFixed(2).replace('.',',');
-      Q('hicp-date').textContent=`Period: ${res.period}`;
-      computeAndRender(c, res.value);
-      alert('HICP-bas satt till senaste.');
-    }else{
-      alert('Välj HICP-läge för automatisk hämtning. I manuellt läge fyll i nivån själv.');
-    }
-  };
-
-  Q('sel-profile').onchange=()=>{ const c=load(); c.profile=Q('sel-profile').value; save(c); Q('custom-edit').hidden=(c.profile!=='custom'); computeAndRender(c, state.hicpLatest||c.hicpBase); };
-  Q('sel-bands-mode').onchange=()=>{ const c=load(); c.bandsMode=Q('sel-bands-mode').value; save(c); computeAndRender(c, state.hicpLatest||c.hicpBase); };
-  ['m10','m20','m30','m40','m50'].forEach((id,i)=> Q(id).addEventListener('change',()=>{ const c=load(); const vals=['m10','m20','m30','m40','m50'].map(id=> Number(Q(id).value)||0); c.customMul=vals; save(c); computeAndRender(c, state.hicpLatest||c.hicpBase); }));
-
-  Q('btn-save').onclick=()=>{
-    const c=load();
-    c.normalReal=readCurrency('inp-normal');
-    c.birth=Q('inp-birth').value;
-    c.iskNom=readCurrency('inp-isk');
-    c.peakNom=readCurrency('inp-peak');
-    c.cadence=Q('sel-cadence').value;
-    c.autoPeak=Q('sel-auto-peak').value;
-    c.autoSync=Q('sel-auto-sync').value;
-
-    c.tjpNom=readCurrency('inp-tjp');
-    c.ppmNom=readCurrency('inp-ppm');
-    c.inkNom=readCurrency('inp-ink');
-    c.indexPensions=Q('sel-index-pensions').value;
-
-    c.inflType=Q('sel-infl-type').value;
-    c.country=Q('sel-country').value;
-    c.hicpBase=parseCurrency(Q('inp-hicp-base').value.replace('.',','));
-    c.hicpManual=Q('inp-hicp-manual').value;
-    c.profile=Q('sel-profile').value;
-    c.bandsMode=Q('sel-bands-mode').value;
-    c.inflPause=Q('sel-infl-pause').value;
-    c.maxChangePct=Number(Q('inp-max-chg').value)||0;
-    c.floorReal=readCurrency('inp-floor');
-    c.remoteUrl=(Q('inp-remote-url').value||'').trim();
-    c.remoteFirst=Q('sel-remote-first').value;
-    if(c.autoSync==='on') c.currentReal=c.normalReal;
-    if(!c.wrTarget && c.peakNom>0) c.wrTarget=withdrawalRate(c.normalReal, c.peakNom);
-    save(c);
-    computeAndRender(c, state.hicpLatest||c.hicpBase);
-    alert('Sparat.');
-  };
-
-  Q('btn-commit').onclick=()=>{
-    const c=load();
-    const days=(c.cadence==='q'?90:30);
-    const allowed=(!c.lastChangeTs)||((new Date()-new Date(c.lastChangeTs))/(24*3600*1000)>=days);
-    if(!allowed) return alert('Vänta tills viloperioden passerat.');
-    c.currentReal = state.proposedReal||c.currentReal;
-    c.lastRealLevel = c.currentReal;
-    c.lastChangeTs = new Date().toISOString();
-    save(c); computeAndRender(c, state.hicpLatest||c.hicpBase);
-    alert(`Verkställt: ${fmtEUR(c.currentReal)}`);
-  };
-  Q('btn-sync').onclick=()=>{
-    const c=load();
-    c.currentReal=c.normalReal; c.lastRealLevel=c.currentReal; c.lastChangeTs=new Date().toISOString();
-    save(c); computeAndRender(c, state.hicpLatest||c.hicpBase);
-    alert('Aktuell = Normal.');
-  };
-
-  Q('btn-hist-update').onclick=()=>{ const c=load(); ensureHistoryAndMaybeAppend(c); drawHistory(c); alert('Historiken uppdaterad.'); };
-  Q('btn-hist-clear').onclick=()=>{ if(!confirm('Töm historik?')) return; const c=load(); c.hist=[]; save(c); drawHistory(c); Q('hist-meta').textContent='—'; };
-
-  if(cfg.remoteFirst==='on' && cfg.remoteUrl){ try{ const r=await fetch(cfg.remoteUrl,{cache:'no-store'}); if(r.ok){ const obj=await r.json(); const merged=migrate({...cfg,...obj}); save(merged); initInputs(merged); computeAndRender(merged, state.hicpLatest||merged.hicpBase); } }catch{} }
-}
-
-window.addEventListener('error', e=>{ const el=Q('err'); el.textContent='Fel: '+(e.message||'Okänt'); el.hidden=false; });
-document.addEventListener('DOMContentLoaded', main);
-</script>
+  <script src="app.js"></script>
 </body>
 </html>
