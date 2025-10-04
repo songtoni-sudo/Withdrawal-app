@@ -1,5 +1,5 @@
 
-// v1.9.3 — FR tooltip updated per user + tooltips + thousand separators + pensions back
+// v1.9.3b — cache-busted assets + error panel; tooltips + thousand separators + pensions back
 const KEY='uttags_config_v192'; // keep same key to preserve user's data
 const state={ hicpLatest:null, hicpPeriod:'', proposedReal:null };
 
@@ -39,14 +39,14 @@ async function fetchHICP(country='ES'){
   try{
     const q=encodeURIComponent(`https://sdw-wsrest.ecb.europa.eu/service/data/ICP/M.${country}.N.000000.4.INX?lastNObservations=36&detail=dataonly&format=jsondata`);
     const url=`https://api.allorigins.win/raw?url=${q}`;
-    const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw 0;
+    const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error('HICP fetch failed: HTTP '+r.status);
     const d=await r.json();
     const obsDim=(d.structure.dimensions.observation||[])[0]; const times=(obsDim&&obsDim.values)?obsDim.values:[];
     const seriesKey=Object.keys(d.dataSets[0].series)[0]; const obs=d.dataSets[0].series[seriesKey].observations;
     const idxs=Object.keys(obs).map(k=>parseInt(k,10)).sort((a,b)=>a-b); const lastIdx=idxs[idxs.length-1];
     const val=Number(obs[lastIdx][0]); const period=(times[lastIdx]&&(times[lastIdx].id||times[lastIdx].name))||'';
     return {value:val, period};
-  }catch(e){ return null; }
+  }catch(e){ console.error(e); return null; }
 }
 
 const guardrailIndex = dd => dd<0.10?0 : dd<0.20?1 : dd<0.30?2 : dd<0.40?3 : 4;
@@ -71,7 +71,7 @@ function computeFR(cfg, realMonthly){
   const age=(now-b)/(365.2425*24*3600*1000); const mLeft=Math.max(0, Math.round((90-age)*12));
   const rm=Math.pow(1+0.047,1/12)-1;
   const PV_need=realMonthly*AF(mLeft,rm);
-  const PV=cfg.iskNom; // NOTE: simplified PV of resources = ISK only (conservative). Can be extended to include pensions PV.
+  const PV=cfg.iskNom;
   return {FR: PV_need>0? PV/PV_need:0};
 }
 function withdrawalRate(monthly, portfolioNow){ return portfolioNow>0? (12*monthly)/portfolioNow : Infinity; }
@@ -135,7 +135,7 @@ function bindCurrencyFields(){
 }
 function readCurrency(id){ return parseCurrency(Q(id).value); }
 
-// Tooltips — include user FR definition
+// Tooltips
 (function(){
   const TIPS = {
     'inp-normal': 'Din månadskonsumtion i dagens priser. Vi bevarar köpkraften via HICP.',
@@ -216,8 +216,7 @@ function computeAndRender(cfg, hicpNow){
     const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
     H = (hicpNow||base)/base;
   }else{
-    const man=Number((Q('inp-hicp-manual').value||'').replace(',','.'));
-    const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
+    const man=Number((Q('inp-hicp-manual').value||'').replace(',','.')); const base=Number(String(cfg.hicpBase).replace(',','.'))||1;
     H = isFinite(man)&&man>0? man/base : 1;
   }
 
@@ -433,5 +432,7 @@ async function main(){
   if (window.__attachTooltips) window.__attachTooltips();
 }
 
-window.addEventListener('error', e=>{ const el=Q('err'); el.textContent='Fel: '+(e.message||'Okänt'); el.hidden=false; });
+// Global error reporting to panel
+window.addEventListener('error', e=>{ const el=Q('err'); if(!el) return; el.textContent='Fel: '+(e.message||'Okänt'); el.hidden=false; });
+window.addEventListener('unhandledrejection', e=>{ const el=Q('err'); if(!el) return; el.textContent='Fel (async): '+(e.reason && e.reason.message ? e.reason.message : String(e.reason)); el.hidden=false; });
 document.addEventListener('DOMContentLoaded', main);
