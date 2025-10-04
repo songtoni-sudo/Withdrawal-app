@@ -1,6 +1,6 @@
 
-// v1.9.2 — Tooltips + thousand separators + pensions back
-const KEY='uttags_config_v192';
+// v1.9.3 — FR tooltip updated per user + tooltips + thousand separators + pensions back
+const KEY='uttags_config_v192'; // keep same key to preserve user's data
 const state={ hicpLatest:null, hicpPeriod:'', proposedReal:null };
 
 const fmtLocale = (v,d=0)=> isFinite(v)? new Intl.NumberFormat(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):'—';
@@ -71,7 +71,7 @@ function computeFR(cfg, realMonthly){
   const age=(now-b)/(365.2425*24*3600*1000); const mLeft=Math.max(0, Math.round((90-age)*12));
   const rm=Math.pow(1+0.047,1/12)-1;
   const PV_need=realMonthly*AF(mLeft,rm);
-  const PV=cfg.iskNom;
+  const PV=cfg.iskNom; // NOTE: simplified PV of resources = ISK only (conservative). Can be extended to include pensions PV.
   return {FR: PV_need>0? PV/PV_need:0};
 }
 function withdrawalRate(monthly, portfolioNow){ return portfolioNow>0? (12*monthly)/portfolioNow : Infinity; }
@@ -135,7 +135,7 @@ function bindCurrencyFields(){
 }
 function readCurrency(id){ return parseCurrency(Q(id).value); }
 
-// Tooltips
+// Tooltips — include user FR definition
 (function(){
   const TIPS = {
     'inp-normal': 'Din månadskonsumtion i dagens priser. Vi bevarar köpkraften via HICP.',
@@ -143,7 +143,7 @@ function readCurrency(id){ return parseCurrency(Q(id).value); }
     'inp-peak': 'Högsta uppmätta portföljvärde (ATH). Används för drawdown. Auto‑ATH kan uppdatera detta.',
     'sel-infl-type': 'HICP: hämtar senaste index automatiskt. Manuell: skriv in indexnivån själv.',
     'sel-country': 'Land för HICP-serien (Eurostat/ECB).',
-    'inp-hicp-base': 'Din startnivå för index. “Set to Latest” sätter denna = senaste värde.',
+    'inp-hicp-base': 'Din startnivå för index. ”Set to Latest” sätter denna = senaste värde.',
     'sel-profile': 'Hur snabbt du stramar åt i nedgång. Balanced bibehåller uttagskvoten; Aggressive sänker mer; Conservative sänker mindre.',
     'sel-bands-mode': 'Bands = fasta steg (10/20/30/40/50 %). Linjär = mjuk kurva (t.ex. Balanced: 1 − d).',
     'sel-auto-peak': 'På: uppdaterar ATH automatiskt när portföljen gör ny topp.',
@@ -155,7 +155,7 @@ function readCurrency(id){ return parseCurrency(Q(id).value); }
     'inp-ppm': 'Premiepension, netto €/månad. Dras från ISK‑uttaget (nom).',
     'inp-ink': 'Inkomstpension, netto €/månad. Dras från ISK‑uttaget (nom).',
     'sel-index-pensions': 'På: pensioner behandlas som reala och indexeras med HICP före avdrag. Av: behandlas som nominella.',
-    'kpi-fr': 'Funding Ratio = ISK / nuvärde av din planerade konsumtion. ≥ 1,0 = planen är finansierad.',
+    'kpi-fr': 'FR (finansieringsgrad): Nuvärde av resurser / nuvärde av planerad konsumtion (realt, EUR). ≥ 1,0 = fullt finansierad.',
     'kpi-isk': 'Nominellt uttag från ISK efter avdrag för TJP + PPM + INK.'
   };
   let bubble;
